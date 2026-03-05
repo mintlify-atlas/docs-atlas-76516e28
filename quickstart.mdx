@@ -1,80 +1,468 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get up and running with Giac in minutes with this hands-on tutorial
 ---
 
-## Get started in three steps
+This guide will walk you through your first Giac program and introduce you to essential operations.
 
-Get your documentation site running locally and make your first customization.
+## Choose Your Platform
 
-### Step 1: Set up your local environment
+<Tabs>
+  <Tab title="Node.js">
+    ## Installation
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    First, install the Giac npm package:
 
-### Step 2: Deploy your changes
+    ```bash
+    npm install giac
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ## Your First Program
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    Create a file `example.js`:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```javascript example.js
+    const giac = require('giac');
 
-### Step 3: Go live
+    // Evaluate a simple expression
+    console.log(giac.evaluate('2+2'));
+    // Output: 4
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    // Factor a polynomial
+    console.log(giac.evaluate('factor(x^4-1)'));
+    // Output: (x-1)*(x+1)*(x^2+1)
 
-## Next steps
+    // Compute a derivative
+    console.log(giac.evaluate('diff(sin(x^2),x)'));
+    // Output: 2*x*cos(x^2)
+    ```
 
-Now that you have your docs running, explore these key features:
+    Run it:
+
+    ```bash
+    node example.js
+    ```
+  </Tab>
+
+  <Tab title="C++">
+    ## Prerequisites
+
+    Make sure you have GMP and MPFR installed:
+
+    ```bash
+    sudo apt install libgmp-dev libmpfr-dev
+    ```
+
+    ## Your First Program
+
+    Create a file `example.cpp`:
+
+    ```cpp example.cpp
+    #include "giac.h"
+    #include <iostream>
+
+    using namespace std;
+    using namespace giac;
+
+    int main() {
+        context ct;
+        
+        // Evaluate a simple expression
+        gen result = eval(gen("2+2", &ct), 1, &ct);
+        cout << "2+2 = " << result << endl;
+        
+        // Factor a polynomial
+        result = eval(gen("factor(x^4-1)", &ct), 1, &ct);
+        cout << "factor(x^4-1) = " << result << endl;
+        
+        // Compute a derivative
+        result = eval(gen("diff(sin(x^2),x)", &ct), 1, &ct);
+        cout << "diff(sin(x^2),x) = " << result << endl;
+        
+        return 0;
+    }
+    ```
+
+    Compile and run:
+
+    ```bash
+    g++ -o example example.cpp -lgiac -lgmp -lmpfr
+    ./example
+    ```
+  </Tab>
+</Tabs>
+
+## Interactive Shell Tutorial
+
+<Steps>
+  <Step title="Start the Interactive Shell">
+    Launch the Giac REPL:
+
+    <Tabs>
+      <Tab title="Node.js">
+        ```bash
+        npm install -g giac
+        node -e "require('giac').repl()"
+        ```
+      </Tab>
+      <Tab title="C++">
+        ```bash
+        cd ~/workspace/source
+        ../gradlew run
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Try Basic Arithmetic">
+    ```
+    >> 2+2
+    << 4
+
+    >> 1/3 + 1/6
+    << 1/2
+
+    >> sqrt(2)
+    << sqrt(2)
+
+    >> evalf(sqrt(2))
+    << 1.41421356237
+    ```
+  </Step>
+
+  <Step title="Work with Polynomials">
+    ```
+    >> expand((x+1)*(x-1))
+    << x^2-1
+
+    >> factor(x^4-1)
+    << (x-1)*(x+1)*(x^2+1)
+
+    >> simplify((x^2-1)/(x-1))
+    << x+1
+    ```
+  </Step>
+
+  <Step title="Symbolic Calculus">
+    ```
+    >> diff(sin(x^2), x)
+    << 2*x*cos(x^2)
+
+    >> int(x*exp(x), x)
+    << (x-1)*exp(x)
+
+    >> limit(sin(x)/x, x=0)
+    << 1
+    ```
+  </Step>
+
+  <Step title="Solve Equations">
+    ```
+    >> solve(x^2-5*x+6=0, x)
+    << [2, 3]
+
+    >> solve([x+y=5, x-y=1], [x,y])
+    << [[3, 2]]
+    ```
+  </Step>
+</Steps>
+
+## Essential Operations
+
+### Polynomial Operations
+
+<CodeGroup>
+```javascript Node.js
+const giac = require('giac');
+
+// Expand
+giac.evaluate('expand((x+2)^3)');
+// x^3+6*x^2+12*x+8
+
+// Factor
+giac.evaluate('factor(x^3+6*x^2+12*x+8)');
+// (x+2)^3
+
+// Simplify
+giac.evaluate('simplify((x^2-4)/(x+2))');
+// x-2
+```
+
+```cpp C++
+#include "giac.h"
+using namespace giac;
+
+context ct;
+
+// Expand
+gen expr = gen("expand((x+2)^3)", &ct);
+gen result = eval(expr, 1, &ct);
+// x^3+6*x^2+12*x+8
+
+// Factor
+expr = gen("factor(x^3+6*x^2+12*x+8)", &ct);
+result = eval(expr, 1, &ct);
+// (x+2)^3
+
+// Simplify
+expr = gen("simplify((x^2-4)/(x+2))", &ct);
+result = eval(expr, 1, &ct);
+// x-2
+```
+</CodeGroup>
+
+### Calculus
+
+<CodeGroup>
+```javascript Node.js
+const giac = require('giac');
+
+// Differentiation
+giac.evaluate('diff(x^3*sin(x), x)');
+// 3*x^2*sin(x)+x^3*cos(x)
+
+// Integration
+giac.evaluate('int(x*exp(x), x)');
+// (x-1)*exp(x)
+
+// Definite integral
+giac.evaluate('int(x^2, x, 0, 1)');
+// 1/3
+
+// Limits
+giac.evaluate('limit(sin(x)/x, x=0)');
+// 1
+```
+
+```cpp C++
+#include "giac.h"
+using namespace giac;
+
+context ct;
+
+// Differentiation
+gen result = eval(gen("diff(x^3*sin(x), x)", &ct), 1, &ct);
+// 3*x^2*sin(x)+x^3*cos(x)
+
+// Integration
+result = eval(gen("int(x*exp(x), x)", &ct), 1, &ct);
+// (x-1)*exp(x)
+
+// Definite integral
+result = eval(gen("int(x^2, x, 0, 1)", &ct), 1, &ct);
+// 1/3
+
+// Limits
+result = eval(gen("limit(sin(x)/x, x=0)", &ct), 1, &ct);
+// 1
+```
+</CodeGroup>
+
+### Equation Solving
+
+<CodeGroup>
+```javascript Node.js
+const giac = require('giac');
+
+// Algebraic equation
+giac.evaluate('solve(x^2-5*x+6=0, x)');
+// [2, 3]
+
+// System of equations
+giac.evaluate('solve([x+y=10, 2*x-y=5], [x,y])');
+// [[5, 5]]
+
+// Trigonometric equation
+giac.evaluate('solve(sin(x)=1/2, x)');
+// [pi/6]
+```
+
+```cpp C++
+#include "giac.h"
+using namespace giac;
+
+context ct;
+
+// Algebraic equation
+gen result = eval(gen("solve(x^2-5*x+6=0, x)", &ct), 1, &ct);
+// [2, 3]
+
+// System of equations
+result = eval(gen("solve([x+y=10, 2*x-y=5], [x,y])", &ct), 1, &ct);
+// [[5, 5]]
+
+// Trigonometric equation
+result = eval(gen("solve(sin(x)=1/2, x)", &ct), 1, &ct);
+// [pi/6]
+```
+</CodeGroup>
+
+## Complete Example Program
+
+Here's a complete program demonstrating various Giac capabilities:
+
+<Tabs>
+  <Tab title="Node.js">
+    ```javascript app.js
+    const giac = require('giac');
+
+    console.log('=== Giac Computer Algebra System ===\n');
+
+    // Polynomial operations
+    console.log('Polynomial Operations:');
+    console.log('factor(x^4-1):', giac.evaluate('factor(x^4-1)'));
+    console.log('expand((x+1)^4):', giac.evaluate('expand((x+1)^4)'));
+
+    // Arbitrary precision arithmetic
+    console.log('\nArbitrary Precision:');
+    console.log('factorial(50):', giac.evaluate('factorial(50)'));
+    console.log('evalf(pi, 50):', giac.evaluate('evalf(pi, 50)'));
+
+    // Calculus
+    console.log('\nCalculus:');
+    console.log('diff(x^3*sin(x), x):', giac.evaluate('diff(x^3*sin(x), x)'));
+    console.log('int(x*exp(x), x):', giac.evaluate('int(x*exp(x), x)'));
+    console.log('int(1/(1+x^2), x, 0, inf):', giac.evaluate('int(1/(1+x^2), x, 0, inf)'));
+
+    // Solving equations
+    console.log('\nEquation Solving:');
+    console.log('solve(x^3-6*x^2+11*x-6=0, x):', giac.evaluate('solve(x^3-6*x^2+11*x-6=0, x)'));
+
+    // Complex numbers
+    console.log('\nComplex Numbers:');
+    console.log('(1+2*i)*(3-4*i):', giac.evaluate('(1+2*i)*(3-4*i)'));
+    console.log('abs(3+4*i):', giac.evaluate('abs(3+4*i)'));
+    ```
+
+    Run it:
+
+    ```bash
+    node app.js
+    ```
+  </Tab>
+
+  <Tab title="C++">
+    ```cpp app.cpp
+    #include "giac.h"
+    #include <iostream>
+
+    using namespace std;
+    using namespace giac;
+
+    int main() {
+        context ct;
+        
+        cout << "=== Giac Computer Algebra System ===" << endl << endl;
+        
+        // Polynomial operations
+        cout << "Polynomial Operations:" << endl;
+        cout << "factor(x^4-1): " << eval(gen("factor(x^4-1)", &ct), 1, &ct) << endl;
+        cout << "expand((x+1)^4): " << eval(gen("expand((x+1)^4)", &ct), 1, &ct) << endl;
+        
+        // Arbitrary precision arithmetic
+        cout << endl << "Arbitrary Precision:" << endl;
+        cout << "factorial(50): " << eval(gen("factorial(50)", &ct), 1, &ct) << endl;
+        
+        // Calculus
+        cout << endl << "Calculus:" << endl;
+        cout << "diff(x^3*sin(x), x): " << eval(gen("diff(x^3*sin(x), x)", &ct), 1, &ct) << endl;
+        cout << "int(x*exp(x), x): " << eval(gen("int(x*exp(x), x)", &ct), 1, &ct) << endl;
+        
+        // Solving equations
+        cout << endl << "Equation Solving:" << endl;
+        cout << "solve(x^3-6*x^2+11*x-6=0, x): " << eval(gen("solve(x^3-6*x^2+11*x-6=0, x)", &ct), 1, &ct) << endl;
+        
+        // Complex numbers
+        cout << endl << "Complex Numbers:" << endl;
+        cout << "(1+2*i)*(3-4*i): " << eval(gen("(1+2*i)*(3-4*i)", &ct), 1, &ct) << endl;
+        cout << "abs(3+4*i): " << eval(gen("abs(3+4*i)", &ct), 1, &ct) << endl;
+        
+        return 0;
+    }
+    ```
+
+    Compile and run:
+
+    ```bash
+    g++ -o app app.cpp -lgiac -lgmp -lmpfr
+    ./app
+    ```
+  </Tab>
+</Tabs>
+
+## Error Handling
+
+<Tabs>
+  <Tab title="Node.js">
+    ```javascript
+    const giac = require('giac');
+
+    try {
+        const result = giac.evaluate('solve(x^2+1=0, x)');
+        console.log('Solution:', result);
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+    ```
+  </Tab>
+
+  <Tab title="C++">
+    ```cpp
+    #include "giac.h"
+    #include <iostream>
+
+    using namespace std;
+    using namespace giac;
+
+    int main() {
+        context ct;
+        
+        try {
+            gen result = eval(gen("solve(x^2+1=0, x)", &ct), 1, &ct);
+            cout << "Solution: " << result << endl;
+        } catch (runtime_error& e) {
+            cerr << "Error: " << e.what() << endl;
+        }
+        
+        return 0;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Core Concepts" icon="book" href="/concepts/architecture">
+    Understand Giac's architecture and type system
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Platform Guides" icon="layer-group" href="/platforms/cpp">
+    Integration guides for different platforms
+  </Card>
+  <Card title="Building" icon="hammer" href="/build/linux">
+    Build Giac from source
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Tips for Success
+
+<AccordionGroup>
+  <Accordion title="Use the REPL for exploration">
+    The interactive REPL is the fastest way to experiment with Giac commands and test expressions before integrating them into your code.
+  </Accordion>
+  
+  <Accordion title="Leverage symbolic computation">
+    Unlike numerical libraries, Giac preserves exact symbolic representations. Use `evalf()` only when you need numerical approximations.
+  </Accordion>
+  
+  <Accordion title="Context management">
+    For multi-threaded applications, create separate contexts for each thread to avoid state conflicts.
+  </Accordion>
+  
+  <Accordion title="Error handling">
+    Always wrap Giac evaluations in try-catch blocks, as invalid expressions or operations can throw runtime errors.
+  </Accordion>
+</AccordionGroup>

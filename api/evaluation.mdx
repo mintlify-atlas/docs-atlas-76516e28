@@ -1,0 +1,412 @@
+---
+title: "Evaluation Functions"
+description: "Documentation for Giac's evaluation system including eval, evalf, and related functions"
+---
+
+## Overview
+
+Giac provides multiple evaluation functions for different computation modes. The evaluation system handles symbolic expressions, numerical approximations, and various levels of simplification.
+
+Defined in: `src/giac/headers/gen.h`
+
+## Core Evaluation Functions
+
+### eval() - Symbolic Evaluation
+
+```cpp
+gen eval(const gen & e, int level, const context * contextptr);
+gen gen::eval(int level, const context * contextptr) const;
+```
+
+Performs symbolic evaluation of an expression.
+
+<ParamField path="e" type="const gen &">
+  Expression to evaluate
+</ParamField>
+<ParamField path="level" type="int">
+  Evaluation depth (typically `DEFAULT_EVAL_LEVEL` = 25)
+</ParamField>
+<ParamField path="contextptr" type="const context *">
+  Evaluation context (can be NULL for default)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Evaluated expression
+</ResponseField>
+
+<CodeGroup>
+```cpp Basic Example
+context ctx;
+gen x = gen("x", &ctx);
+gen expr = x * x + 2 * x + 1;
+
+// Symbolic evaluation
+gen result = expr.eval(DEFAULT_EVAL_LEVEL, &ctx);
+// result: x^2 + 2*x + 1 (symbolic form)
+```
+
+```cpp With Variables
+context ctx;
+gen x = identificateur("x");
+gen expr = x * x + 2 * x + 1;
+
+// Assign value to x
+(*ctx.tabptr)["x"] = gen(3);
+
+// Evaluate with substitution
+gen result = expr.eval(1, &ctx);
+// result: 16 (since 3^2 + 2*3 + 1 = 16)
+```
+</CodeGroup>
+
+### evalf() - Floating-Point Evaluation
+
+```cpp
+gen evalf(const gen & e, int level, const context * contextptr);
+gen gen::evalf(int level, const context * contextptr) const;
+```
+
+Evaluates expression to floating-point approximation.
+
+<ParamField path="level" type="int">
+  Evaluation level (controls precision and recursion)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Approximate numerical result
+</ResponseField>
+
+<CodeGroup>
+```cpp Example
+context ctx;
+gen pi = gen("pi", &ctx);
+gen approx = pi.evalf(1, &ctx);
+// approx: 3.14159265359...
+
+gen sqrt2 = gen("sqrt(2)", &ctx);
+gen val = sqrt2.evalf(1, &ctx);
+// val: 1.41421356237...
+```
+</CodeGroup>
+
+### evalf_double() - Force Double Precision
+
+```cpp
+gen evalf_double(const gen & e, int level, const context * contextptr);
+gen gen::evalf_double(int level, const context * contextptr) const;
+```
+
+Forces evaluation to standard double precision (53-bit mantissa).
+
+<CodeGroup>
+```cpp Example
+context ctx;
+gen expr = gen("1/3", &ctx);
+gen dbl = expr.evalf_double(1, &ctx);
+// dbl: 0.333333333333 (double precision)
+```
+</CodeGroup>
+
+### evalf2double() - Convert to Double
+
+```cpp
+gen gen::evalf2double(int level, const context * contextptr) const;
+```
+
+Evaluates and converts result to double type.
+
+## Evaluation Levels
+
+The evaluation level controls how deeply nested expressions are evaluated:
+
+<ParamField path="DEFAULT_EVAL_LEVEL" type="constant">
+  Standard evaluation depth (typically 25)
+</ParamField>
+
+- **Level 0**: No evaluation
+- **Level 1**: Single evaluation pass
+- **Higher levels**: Recursive evaluation to specified depth
+
+The default `DEFAULT_EVAL_LEVEL` is usually sufficient for most operations.
+
+<CodeGroup>
+```cpp Evaluation Levels
+gen x = gen("x", contextptr);
+gen expr = gen("eval(x+1)", contextptr);
+
+// Level 0: No evaluation
+gen r0 = expr.eval(0, contextptr);  // Returns "eval(x+1)" unevaluated
+
+// Level 1: One evaluation
+gen r1 = expr.eval(1, contextptr);  // Evaluates outer eval()
+
+// Default level: Full evaluation
+gen r_default = expr.eval(DEFAULT_EVAL_LEVEL, contextptr);
+```
+</CodeGroup>
+
+## Internal Evaluation Functions
+
+### in_eval() - Internal Evaluation
+
+```cpp
+bool gen::in_eval(int level, gen & evaled, const context * contextptr) const;
+```
+
+Internal evaluation function that returns success status.
+
+<ResponseField name="return" type="bool">
+  true if evaluation changed the expression, false otherwise
+</ResponseField>
+<ResponseField name="evaled" type="gen &">
+  Output parameter receiving the evaluated result
+</ResponseField>
+
+### in_evalf() - Internal Float Evaluation
+
+```cpp
+bool gen::in_evalf(int level, gen & evaled, const context * contextptr) const;
+```
+
+Internal floating-point evaluation.
+
+## Specialized Evaluation
+
+### eval_VECT() - Vector Evaluation
+
+```cpp
+gen eval_VECT(const vecteur & v, int subtype, int level, const context * contextptr);
+```
+
+Evaluates all elements of a vector.
+
+<CodeGroup>
+```cpp Example
+vecteur v = {gen("x+1", ctx), gen("y*2", ctx), gen("z^2", ctx)};
+gen result = eval_VECT(v, 0, 1, &ctx);
+```
+</CodeGroup>
+
+### evalf_VECT() - Vector Float Evaluation
+
+```cpp
+gen evalf_VECT(const vecteur & v, int subtype, int level, const context * contextptr);
+```
+
+Floating-point evaluation of vector elements.
+
+## Checking for Numeric Values
+
+### has_evalf() - Check if Numeric
+
+```cpp
+bool has_evalf(const gen & g, gen & res, int level, const context * contextptr);
+```
+
+Checks if an expression can be converted to a numeric value.
+
+<ResponseField name="return" type="bool">
+  true if expression has a numeric value
+</ResponseField>
+<ResponseField name="res" type="gen &">
+  The numeric value if conversion succeeds
+</ResponseField>
+
+<CodeGroup>
+```cpp Example
+context ctx;
+gen expr = gen("sin(pi/2)", &ctx);
+gen numeric_val;
+
+if (has_evalf(expr, numeric_val, 1, &ctx)) {
+  // numeric_val contains 1.0
+}
+```
+</CodeGroup>
+
+## Non-Recursive Evaluation
+
+### nr_eval() - Non-Recursive Eval
+
+```cpp
+gen nr_eval(const gen & g, int level, const context * ct);
+```
+
+Non-recursive evaluation function (defined in `symbolic.h`).
+
+Useful for avoiding deep recursion in complex expressions.
+
+## Evaluation Modes
+
+Evaluation behavior is controlled by context settings:
+
+### Approximate Mode
+
+```cpp
+bool & approx_mode(GIAC_CONTEXT);
+```
+
+When true, evaluation returns approximate (floating-point) results.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+approx_mode(true, &ctx);
+
+gen x = gen("1/3", &ctx);
+gen result = x.eval(1, &ctx);
+// result: 0.333333... (approximate)
+
+approx_mode(false, &ctx);
+result = x.eval(1, &ctx);
+// result: 1/3 (exact)
+```
+</CodeGroup>
+
+### Complex Mode
+
+```cpp
+bool & complex_mode(GIAC_CONTEXT);
+```
+
+Allows complex results from operations like sqrt(-1).
+
+<CodeGroup>
+```cpp Example
+context ctx;
+complex_mode(true, &ctx);
+
+gen x = gen("sqrt(-1)", &ctx);
+gen result = x.eval(1, &ctx);
+// result: i (complex number)
+```
+</CodeGroup>
+
+### Evaluation Level Setting
+
+```cpp
+int & eval_level(GIAC_CONTEXT);
+```
+
+Get current evaluation level in context.
+
+## Error Handling
+
+Evaluation functions may return error gen objects:
+
+```cpp
+bool is_undef(const gen & e);
+```
+
+Check if evaluation resulted in an undefined value (error).
+
+<CodeGroup>
+```cpp Error Handling
+context ctx;
+gen expr = gen("1/0", &ctx);
+gen result = expr.eval(1, &ctx);
+
+if (is_undef(result)) {
+  // Handle division by zero error
+}
+```
+</CodeGroup>
+
+## Performance Considerations
+
+### Evaluation Depth
+
+Lower evaluation levels are faster but may not fully simplify:
+
+<CodeGroup>
+```cpp Performance
+// Fast but possibly incomplete
+gen quick = expr.eval(1, contextptr);
+
+// Thorough but slower
+gen complete = expr.eval(DEFAULT_EVAL_LEVEL, contextptr);
+```
+</CodeGroup>
+
+### Approximate vs Exact
+
+Approximate mode is generally faster:
+
+<CodeGroup>
+```cpp Speed Comparison
+context ctx;
+
+// Exact (slower, symbolic)
+approx_mode(false, &ctx);
+gen exact = expr.eval(1, &ctx);
+
+// Approximate (faster, numeric)
+approx_mode(true, &ctx);
+gen approx = expr.eval(1, &ctx);
+```
+</CodeGroup>
+
+## Context Evaluation Helper
+
+```cpp
+gen no_context_evalf(const gen & e);
+```
+
+Evaluate to float without context (uses default settings).
+
+## Common Patterns
+
+### Parse and Evaluate
+
+<CodeGroup>
+```cpp Pattern
+context ctx;
+std::string input = "x^2 + 2*x + 1";
+
+// Parse
+gen expr(input, &ctx);
+
+// Set variable
+(*ctx.tabptr)["x"] = gen(5);
+
+// Evaluate
+gen result = expr.eval(1, &ctx);
+// result: 36
+```
+</CodeGroup>
+
+### Numeric Approximation
+
+<CodeGroup>
+```cpp Pattern
+context ctx;
+gen pi = gen("pi", &ctx);
+
+// Get approximation
+gen approx = pi.evalf(1, &ctx);
+double value = approx.to_double(&ctx);
+// value: 3.14159265359
+```
+</CodeGroup>
+
+### Safe Evaluation
+
+<CodeGroup>
+```cpp Pattern
+gen safe_eval(const gen & expr, GIAC_CONTEXT) {
+  gen result = expr.eval(DEFAULT_EVAL_LEVEL, contextptr);
+  
+  if (is_undef(result)) {
+    // Handle error
+    return gen(0);  // Default value
+  }
+  
+  return result;
+}
+```
+</CodeGroup>
+
+## See Also
+
+- [gen class](/api/gen) - The gen type and its methods
+- [Context API](/api/context) - Context configuration affecting evaluation

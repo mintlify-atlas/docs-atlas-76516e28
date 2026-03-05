@@ -1,0 +1,251 @@
+---
+title: 'System Architecture'
+description: 'Understanding the internal structure of Giac'
+---
+
+## Overview
+
+Giac is a sophisticated computer algebra system built with a modular architecture that separates concerns between different computational domains. The system is organized under the `giac` namespace and consists of several interconnected layers.
+
+## Namespace Organization
+
+All Giac components are contained within the `giac` namespace (unless compiled with `NO_NAMESPACE_GIAC`). This provides clean separation from other libraries and prevents naming conflicts.
+
+```cpp
+#ifndef NO_NAMESPACE_GIAC
+namespace giac {
+#endif
+  // All Giac code here
+#ifndef NO_NAMESPACE_GIAC
+}
+#endif
+```
+
+## Core Type System
+
+At the heart of Giac is the `gen` class (defined in `gen.h`), which serves as a universal container for all mathematical objects. The type system uses a tagged union approach for efficiency:
+
+### Type Hierarchy
+
+```cpp
+enum gen_unary_types {
+  _INT_= 0,      // Immediate integer
+  _DOUBLE_= 1,   // Immediate floating-point
+  _ZINT= 2,      // Arbitrary precision integer (mpz_t*)
+  _REAL= 3,      // Arbitrary precision float (mpfr_t*)
+  _CPLX= 4,      // Complex numbers
+  _POLY= 5,      // Polynomials
+  _IDNT= 6,      // Identifiers/variables
+  _VECT= 7,      // Vectors/lists
+  _SYMB= 8,      // Symbolic expressions
+  _FRAC= 10,     // Fractions
+  _STRNG= 12,    // Strings
+  _FUNC= 13,     // Function pointers
+  // ... more types
+};
+```
+
+### Memory Management
+
+Giac uses reference counting for efficient memory management:
+
+- **Immediate types** (`_INT_`, `_DOUBLE_`): Stored directly in the `gen` object without heap allocation
+- **Pointer types**: Use reference-counted smart pointers with structures like `ref_mpz_t`, `ref_vecteur`, etc.
+
+```cpp
+struct ref_mpz_t {
+  volatile ref_count_t ref_count;
+  mpz_t z;
+  ref_mpz_t():ref_count(1) {mpz_init(z);}
+  ~ref_mpz_t() { mpz_clear(z); }
+};
+```
+
+## Key Modules
+
+### 1. Symbolic Layer (`symbolic.h`)
+
+Handles symbolic expressions and provides:
+- Expression tree representation
+- Pattern matching and rewriting
+- Simplification algorithms
+
+### 2. Polynomial Layer (`poly.h`, `monomial.h`)
+
+Implements:
+- Multivariate polynomials as sparse tensors
+- Efficient polynomial arithmetic
+- GCD and factorization algorithms
+
+### 3. Linear Algebra (`lin.h`, `vecteur.h`)
+
+Provides:
+- Matrix and vector operations
+- Gaussian elimination
+- Eigenvalue/eigenvector computation
+
+### 4. Calculus (`derive.h`, `intg.h`)
+
+Implements:
+- Symbolic differentiation
+- Integration algorithms (Risch, numerical methods)
+- Series expansion
+
+### 5. Equation Solving (`solve.h`)
+
+Handles:
+- Polynomial equation solving
+- Systems of equations
+- Differential equations
+
+### 6. Number Theory (`ifactor.h`, `modpoly.h`)
+
+Supports:
+- Integer factorization
+- Modular arithmetic
+- Primality testing
+
+## Component Interaction Flow
+
+<Steps>
+  <Step title="Input Parsing">
+    User input is parsed into a `gen` object representing the expression tree
+  </Step>
+  
+  <Step title="Evaluation">
+    The `eval()` method recursively evaluates the expression using the context
+  </Step>
+  
+  <Step title="Type Dispatch">
+    Operations dispatch based on the types of operands (see `dispatch.h`)
+  </Step>
+  
+  <Step title="Algorithm Selection">
+    Appropriate algorithms are selected based on the mathematical domain
+  </Step>
+  
+  <Step title="Result Construction">
+    Results are packaged back into `gen` objects for return
+  </Step>
+</Steps>
+
+## Evaluation Architecture
+
+### Expression Evaluation
+
+Giac uses a multi-level evaluation system:
+
+```cpp
+// From gen.h
+gen eval(int level, const context * contextptr) const;
+```
+
+The evaluation level controls how deeply expressions are simplified:
+- Level 0: No evaluation
+- Level 1: Single pass evaluation  
+- Higher levels: More aggressive simplification
+
+### Context-Based Evaluation
+
+All evaluations occur within a **context** that stores:
+- Symbol table (variable bindings)
+- Global settings (angle mode, precision, etc.)
+- Evaluation history
+- Parent/child context relationships
+
+See [Contexts and Evaluation](/concepts/contexts) for details.
+
+## Platform Adaptations
+
+Giac supports multiple architectures through compile-time configuration:
+
+### Smart Pointers (64-bit optimization)
+
+```cpp
+#ifdef SMARTPTR64
+// On 64-bit systems, pointers are packed into the gen structure
+// using the upper 48 bits, with type info in lower 16 bits
+#endif
+```
+
+### Double Precision Handling
+
+```cpp
+#ifdef DOUBLEVAL
+// Store doubles directly in the gen union
+double _DOUBLE_val;
+#else
+// Use type tagging with reduced mantissa precision
+#endif
+```
+
+## Integration Points
+
+### External Libraries
+
+Giac integrates with:
+- **GMP/MPFR**: Arbitrary precision arithmetic
+- **NTL**: Advanced number theory algorithms
+- **PARI**: Additional number theory support
+- **GSL**: Numerical methods
+
+### Language Bindings
+
+The architecture supports:
+- C++ native API
+- Python bindings
+- JavaScript (via Emscripten)
+- Java (Android)
+
+## Performance Considerations
+
+<AccordionGroup>
+  <Accordion title="Type Dispatch Optimization">
+    Binary operations use a computed switch value:
+    ```cpp
+    register unsigned t = (type << _DECALAGE) | a.type;
+    switch(t) {
+      case _INT___INT_: // Fast integer path
+      case _DOUBLE___DOUBLE_: // Fast float path
+      // ... optimized paths for common combinations
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Memory Allocation">
+    - Small integers are stored directly (no allocation)
+    - Reference counting prevents unnecessary copies
+    - Copy-on-write for large structures
+  </Accordion>
+  
+  <Accordion title="Algorithm Selection">
+    Giac automatically selects algorithms based on problem size:
+    - Karatsuba multiplication for large polynomials
+    - FFT multiplication for very large integers
+    - Modular methods for polynomial GCD
+  </Accordion>
+</AccordionGroup>
+
+## Thread Safety
+
+Giac provides thread support through:
+- Per-thread contexts
+- Mutex protection for shared resources
+- Configurable thread evaluation with `thread_param`
+
+```cpp
+#ifdef HAVE_LIBPTHREAD
+pthread_mutex_t * mutexptr(GIAC_CONTEXT);
+#endif
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Types" icon="shapes" href="/concepts/data-types">
+    Learn about the gen class and type system
+  </Card>
+  <Card title="Contexts" icon="layer-group" href="/concepts/contexts">
+    Understand evaluation contexts
+  </Card>
+</CardGroup>

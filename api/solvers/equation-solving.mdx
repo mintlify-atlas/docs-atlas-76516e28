@@ -1,0 +1,685 @@
+---
+title: 'Equation Solving'
+description: 'Functions for solving algebraic, polynomial, trigonometric equations and systems'
+---
+
+## Overview
+
+The equation solving module provides comprehensive tools for solving various types of equations including:
+- Single variable algebraic equations
+- Polynomial equations (exact and numeric)
+- Systems of equations
+- Linear systems
+- Numeric root finding
+- Modular polynomial roots
+
+## Core Solving Functions
+
+### solve
+
+<ParamField path="e" type="gen">
+  The equation or expression to solve
+</ParamField>
+
+<ParamField path="x" type="identificateur | gen">
+  The variable to solve for
+</ParamField>
+
+<ParamField path="isolate_mode" type="int">
+  Mode flags: bit 0 for complex mode, bit 1 for principal solutions only
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer for evaluation
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of solutions
+</ResponseField>
+
+```cpp
+vecteur solve(const gen & e, const identificateur & x, int isolate_mode, GIAC_CONTEXT);
+vecteur solve(const gen & e, const gen & x, int isolate_mode, GIAC_CONTEXT);
+vecteur solve(const vecteur & v, bool complex_mode, GIAC_CONTEXT);
+```
+
+Solves equations symbolically. The `isolate_mode` parameter controls whether complex solutions are returned and whether only principal solutions are computed.
+
+<Tip>
+For polynomial inputs, use `isolate_mode & 1` to enable complex mode and get all complex roots.
+</Tip>
+
+### protect_solve
+
+<ParamField path="e" type="gen">
+  The equation to solve
+</ParamField>
+
+<ParamField path="x" type="identificateur">
+  The variable to solve for
+</ParamField>
+
+<ParamField path="isolate_mode" type="int">
+  Solving mode flags
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Protected solution vector
+</ResponseField>
+
+```cpp
+vecteur protect_solve(const gen & e, const identificateur & x, int isolate_mode, GIAC_CONTEXT);
+```
+
+Protected version of solve that handles exceptions and edge cases more robustly.
+
+### _solve
+
+<ParamField path="args" type="gen">
+  Arguments containing equation and variable
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Solutions as a gen expression
+</ResponseField>
+
+```cpp
+gen _solve(const gen & args, GIAC_CONTEXT);
+```
+
+Command-line interface wrapper for solve function. Converts solutions to appropriate expression format.
+
+## Numeric Solvers
+
+### fsolve
+
+<ParamField path="args" type="gen">
+  Equation, variable, and optional initial guess/interval
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Numeric solution(s)
+</ResponseField>
+
+```cpp
+gen _fsolve(const gen & args, GIAC_CONTEXT);
+gen in_fsolve(vecteur & v, GIAC_CONTEXT);
+```
+
+Finds numeric (floating-point) solutions to equations. Can accept initial guess or search interval.
+
+<CodeGroup>
+```cpp Example: Single root
+// Find root near x=1
+gen result = _fsolve(makesequence(x*x-2, x, 1), contextptr);
+```
+
+```cpp Example: Interval search
+// Find root in interval [0,2]
+gen result = _fsolve(makesequence(x*x-2, x, 0, 2), contextptr);
+```
+</CodeGroup>
+
+### newton
+
+<ParamField path="f" type="gen">
+  Function to find roots of
+</ParamField>
+
+<ParamField path="x" type="gen">
+  Variable
+</ParamField>
+
+<ParamField path="guess" type="gen">
+  Initial guess for the root
+</ParamField>
+
+<ParamField path="niter" type="int">
+  Maximum number of iterations
+</ParamField>
+
+<ParamField path="eps1" type="double">
+  Initial tolerance
+</ParamField>
+
+<ParamField path="eps2" type="double">
+  Final tolerance
+</ParamField>
+
+<ParamField path="real" type="bool">
+  If true, restrict random re-initialization to real values
+</ParamField>
+
+<ParamField path="xmin" type="double">
+  Lower boundary for x
+</ParamField>
+
+<ParamField path="xmax" type="double">
+  Upper boundary for x
+</ParamField>
+
+<ParamField path="rand_xmin" type="double">
+  Lower boundary for random re-initialization
+</ParamField>
+
+<ParamField path="rand_xmax" type="double">
+  Upper boundary for random re-initialization
+</ParamField>
+
+<ParamField path="init_prefactor" type="double">
+  Initial step size prefactor
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Approximate root
+</ResponseField>
+
+```cpp
+gen newton(const gen & f, const gen & x, const gen & guess, int niter, 
+           double eps1, double eps2, bool real, double xmin, double xmax, 
+           double rand_xmin, double rand_xmax, double init_prefactor, 
+           GIAC_CONTEXT);
+gen _newton(const gen & args, GIAC_CONTEXT);
+```
+
+Newton's method for finding roots with configurable tolerances and boundaries.
+
+### bisection_solver
+
+<ParamField path="equation" type="gen">
+  The equation to solve
+</ParamField>
+
+<ParamField path="var" type="gen">
+  Variable
+</ParamField>
+
+<ParamField path="a0" type="gen">
+  Left endpoint of interval
+</ParamField>
+
+<ParamField path="b0" type="gen">
+  Right endpoint of interval
+</ParamField>
+
+<ParamField path="iszero" type="int&">
+  Input/output status flag (see description)
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of roots or intervals with sign changes
+</ResponseField>
+
+```cpp
+vecteur bisection_solver(const gen & equation, const gen & var, 
+                         const gen & a0, const gen & b0, int & iszero, 
+                         GIAC_CONTEXT);
+```
+
+Finds roots using bisection method. The `iszero` parameter controls behavior:
+- Input: 0 for single root, -1 for multiple roots without step count, positive for multiple with nstep
+- Output: -2 if same sign at endpoints, -1 if error, 1 if zero found, 2 if sign reversal
+
+### solve_zero_extremum
+
+<ParamField path="equation" type="gen">
+  Equation to analyze
+</ParamField>
+
+<ParamField path="variable" type="gen">
+  Variable
+</ParamField>
+
+<ParamField path="guess" type="gen">
+  Initial guess (can be interval with xmin, xmax)
+</ParamField>
+
+<ParamField path="type" type="int&">
+  Input: 0 for zeros, 1 for extrema. Output: actual type found
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Zeros or extrema found
+</ResponseField>
+
+```cpp
+vecteur solve_zero_extremum(const gen & equation, const gen & variable, 
+                            const gen & guess, int & type, GIAC_CONTEXT);
+vecteur solve_zero_extremum(const gen & equation0, const gen & variable, 
+                            const gen & guess, double xmin, double xmax, 
+                            int & type, GIAC_CONTEXT);
+```
+
+Finds zeros or extrema near a guess point. For polynomial input, returns all zeros or extrema.
+
+## Linear Systems
+
+### linsolve
+
+<ParamField path="sl" type="vecteur">
+  System of linear equations
+</ParamField>
+
+<ParamField path="x" type="vecteur">
+  Vector of variables
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Solution vector
+</ResponseField>
+
+```cpp
+vecteur linsolve(const vecteur & sl, const vecteur & x, GIAC_CONTEXT);
+gen _linsolve(const gen & args, GIAC_CONTEXT);
+gen symb_linsolve(const gen & syst, const gen & vars);
+```
+
+Solves systems of linear equations.
+
+### linsolve_u / linsolve_l
+
+<ParamField path="m" type="matrice">
+  Upper/lower triangular matrix
+</ParamField>
+
+<ParamField path="y" type="vecteur">
+  Right-hand side vector
+</ParamField>
+
+<ParamField path="a" type="vecteur&">
+  Output solution vector
+</ParamField>
+
+```cpp
+void linsolve_u(const matrice & m, const vecteur & y, vecteur & a);
+void linsolve_l(const matrice & m, const vecteur & y, vecteur & a);
+```
+
+Specialized solvers for upper and lower triangular systems.
+
+### aspen_linsolve
+
+<ParamField path="m" type="matrice">
+  Coefficient matrix (augmented with right-hand side)
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="int">
+  0 for no solution, 1 for unique solution, 2 for infinite solutions, -1 for error
+</ResponseField>
+
+```cpp
+int aspen_linsolve(const matrice & m, GIAC_CONTEXT);
+int aspen_linsolve_2x2(const gen & a, const gen & b, const gen & c, 
+                       const gen & d, const gen & e, const gen & f, 
+                       GIAC_CONTEXT);
+int aspen_linsolve_3x3(const gen & a, const gen & b, const gen & c, const gen & d,
+                       const gen & e, const gen & f, const gen & g, const gen & h,
+                       const gen & i, const gen & j, const gen & k, const gen & l,
+                       GIAC_CONTEXT);
+```
+
+Optimized linear solvers for small systems (2x2 and 3x3).
+
+## System Solving
+
+### gsolve
+
+<ParamField path="eq_orig" type="vecteur">
+  System of equations
+</ParamField>
+
+<ParamField path="var" type="vecteur">
+  Vector of variables
+</ParamField>
+
+<ParamField path="complexmode" type="bool">
+  Whether to find complex solutions
+</ParamField>
+
+<ParamField path="evalf_after" type="int">
+  Whether to evaluate solutions numerically after solving
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of solution sets
+</ResponseField>
+
+```cpp
+vecteur gsolve(const vecteur & eq_orig, const vecteur & var, 
+               bool complexmode, int evalf_after, GIAC_CONTEXT);
+```
+
+General system solver using Gröbner basis methods for polynomial systems.
+
+## Modular Arithmetic
+
+### modpolyroot
+
+<ParamField path="a" type="vecteur">
+  Polynomial coefficients
+</ParamField>
+
+<ParamField path="p" type="gen">
+  Prime modulus
+</ParamField>
+
+<ParamField path="v" type="vecteur&">
+  Output vector of roots modulo p
+</ParamField>
+
+<ParamField path="dogcd" type="bool">
+  Whether to compute gcd with x^p-x first
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if successful
+</ResponseField>
+
+```cpp
+bool modpolyroot(const vecteur & a, const gen & p, vecteur & v, 
+                 bool dogcd, GIAC_CONTEXT);
+```
+
+Finds all roots of a polynomial modulo a prime p. Set `dogcd` to false if you've already computed gcd with x^p-x.
+
+## Gröbner Bases
+
+### gbasis
+
+<ParamField path="v" type="vectpoly">
+  Vector of polynomials
+</ParamField>
+
+<ParamField path="order" type="gen">
+  Monomial ordering
+</ParamField>
+
+<ParamField path="with_cocoa" type="bool">
+  Whether to use CoCoA library if available
+</ParamField>
+
+<ParamField path="modular" type="int">
+  Modular algorithm flag
+</ParamField>
+
+<ParamField path="env" type="environment*">
+  Polynomial environment
+</ParamField>
+
+<ParamField path="rur" type="int&">
+  Rational univariate representation flag
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ParamField path="gbasis_param" type="gbasis_param_t">
+  Additional parameters for Gröbner basis computation
+</ParamField>
+
+<ParamField path="coeffsptr" type="std::vector<vectpoly>*">
+  Optional pointer to store transformation coefficients
+</ParamField>
+
+<ResponseField name="return" type="vectpoly">
+  Gröbner basis
+</ResponseField>
+
+```cpp
+vectpoly gbasis(const vectpoly & v, const gen & order, bool with_cocoa, 
+                int modular, environment * env, int & rur, GIAC_CONTEXT,
+                gbasis_param_t gbasis_param, 
+                std::vector<vectpoly> * coeffsptr=0);
+gen _gbasis(const gen & args, GIAC_CONTEXT);
+```
+
+Computes Gröbner basis of polynomial ideals. Essential for solving polynomial systems.
+
+### eliminate
+
+<ParamField path="args" type="gen">
+  System and variables to eliminate
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  System with variables eliminated
+</ResponseField>
+
+```cpp
+gen _eliminate(const gen & args, GIAC_CONTEXT);
+```
+
+Eliminates variables from polynomial systems using Gröbner bases.
+
+### greduce
+
+<ParamField path="args" type="gen">
+  Polynomial and basis to reduce with
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Reduced polynomial
+</ResponseField>
+
+```cpp
+gen _greduce(const gen & args, GIAC_CONTEXT);
+```
+
+Reduces a polynomial with respect to a Gröbner basis.
+
+## Optimization
+
+### fmin_cobyla
+
+<ParamField path="f" type="gen">
+  Objective function to minimize
+</ParamField>
+
+<ParamField path="constraints" type="vecteur">
+  Vector of constraint expressions (must be positive for feasibility)
+</ParamField>
+
+<ParamField path="variables" type="vecteur">
+  Variables to optimize
+</ParamField>
+
+<ParamField path="guess" type="vecteur">
+  Initial point
+</ParamField>
+
+<ParamField path="eps0" type="gen">
+  Tolerance
+</ParamField>
+
+<ParamField path="maxiter0" type="gen">
+  Maximum iterations
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Optimal point or error
+</ResponseField>
+
+```cpp
+gen fmin_cobyla(const gen & f, const vecteur & constraints, 
+                const vecteur & variables, const vecteur & guess, 
+                const gen & eps0, const gen & maxiter0, GIAC_CONTEXT);
+```
+
+Minimizes function subject to constraints using COBYLA (Constrained Optimization BY Linear Approximation).
+
+<Note>
+Constraints must be written so that positive values indicate feasibility. For example, to express x ≤ MAX, use the constraint MAX - x.
+</Note>
+
+### giac_cobyla
+
+<ParamField path="gc" type="cobyla_gc*">
+  Structure containing function, constraints, and variables
+</ParamField>
+
+<ParamField path="x0" type="vecteur&">
+  Input: initial point. Output: final point
+</ParamField>
+
+<ParamField path="maxiter" type="int&">
+  Input: max evaluations. Output: actual evaluations
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Tolerance (default 1e-8)
+</ParamField>
+
+<ParamField path="msg" type="int">
+  Verbosity level 0-3 (default 0)
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Return code indicating success or failure
+</ResponseField>
+
+```cpp
+int giac_cobyla(cobyla_gc *gc, vecteur &x0, int &maxiter, 
+                double eps=1e-8, int msg=0);
+```
+
+Lower-level COBYLA interface with more control over algorithm parameters.
+
+## Utility Functions
+
+### find_singularities
+
+<ParamField path="e" type="gen">
+  Expression
+</ParamField>
+
+<ParamField path="x" type="identificateur">
+  Variable
+</ParamField>
+
+<ParamField path="cplxmode" type="int">
+  Complex mode flag
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of singularities
+</ResponseField>
+
+```cpp
+vecteur find_singularities(const gen & e, const identificateur & x, 
+                           int cplxmode, GIAC_CONTEXT);
+vecteur protect_find_singularities(const gen & e, const identificateur & x, 
+                                   int cplxmode, GIAC_CONTEXT);
+```
+
+Finds singularities (poles, branch points) of an expression.
+
+### solvepostprocess
+
+<ParamField path="g" type="gen">
+  Raw solution
+</ParamField>
+
+<ParamField path="x" type="gen">
+  Variable
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Processed solution
+</ResponseField>
+
+```cpp
+gen solvepostprocess(const gen & g, const gen & x, GIAC_CONTEXT);
+```
+
+Post-processes solutions to simplify and format them appropriately.
+
+### solvepreprocess
+
+<ParamField path="args" type="gen">
+  Input arguments
+</ParamField>
+
+<ParamField path="complex_mode" type="bool">
+  Whether complex mode is enabled
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Preprocessed equations and variables
+</ResponseField>
+
+```cpp
+vecteur solvepreprocess(const gen & args, bool complex_mode, GIAC_CONTEXT);
+```
+
+Preprocesses solve arguments to normalize equations and extract variables.
+
+## Related Functions
+
+- [Sturm Sequences](./sturm-sequences) - Root counting and isolation methods
+- Polynomial roots - See polynomial module
+- Numeric evaluation - See evalf module

@@ -1,0 +1,391 @@
+---
+title: Building on Windows
+description: Guide to compile Giac on Windows using MSYS2 and Clang
+---
+
+This guide explains how to build Giac on Windows using MSYS2 with the CLANG64 environment. Both 64-bit and 32-bit builds are supported.
+
+## Prerequisites
+
+### Install MSYS2
+
+<Steps>
+  <Step title="Download MSYS2">
+    Download the installer from [msys2.org](https://www.msys2.org/) and run it.
+  </Step>
+
+  <Step title="Update package database">
+    After installation, open the MSYS2 terminal and update the package database:
+    ```bash
+    pacman -Syu
+    ```
+    
+    Close and reopen the terminal, then run:
+    ```bash
+    pacman -Su
+    ```
+  </Step>
+
+  <Step title="Launch CLANG64 environment">
+    From the Start menu, launch **MSYS2 CLANG64** (not MINGW64 or UCRT64).
+  </Step>
+</Steps>
+
+### Install Required Packages
+
+For **64-bit builds** (CLANG64), install the following packages:
+
+```bash
+pacman -S base-devel \
+          mingw-w64-clang-x86_64-cc \
+          mingw-w64-clang-x86_64-gmp \
+          mingw-w64-clang-x86_64-mpfr \
+          mingw-w64-clang-x86_64-cmake \
+          mingw-w64-clang-x86_64-make
+```
+
+<Note>
+The prebuilt source tree includes static versions of GMP and MPFR for Windows (clang64 and clang32). You can skip installing `mingw-w64-clang-x86_64-gmp` and `mingw-w64-clang-x86_64-mpfr` if using the defaults.
+</Note>
+
+### For 32-bit Builds
+
+Use the **CLANG32** flavor instead, and replace `x86_64` with `i686`:
+
+```bash CLANG32 Packages
+pacman -S base-devel \
+          mingw-w64-clang-i686-cc \
+          mingw-w64-clang-i686-gmp \
+          mingw-w64-clang-i686-mpfr \
+          mingw-w64-clang-i686-cmake \
+          mingw-w64-clang-i686-make
+```
+
+## Building with CMake
+
+<Steps>
+  <Step title="Open CLANG64 terminal">
+    Launch **MSYS2 CLANG64** from the Start menu.
+  </Step>
+
+  <Step title="Navigate to source directory">
+    ```bash
+    cd /path/to/giac
+    ```
+  </Step>
+
+  <Step title="Create build directory">
+    ```bash
+    mkdir build
+    cd build
+    ```
+  </Step>
+
+  <Step title="Configure with CMake">
+    ```bash
+    CC=clang CXX=clang++ cmake -G "MinGW Makefiles" ..
+    ```
+    
+    This configures the build to:
+    - Use Clang compiler
+    - Generate MinGW-compatible Makefiles
+    - Use prebuilt static libraries from `src/jni/prebuilt/windows/clang64/`
+  </Step>
+
+  <Step title="Compile">
+    ```bash
+    mingw32-make
+    ```
+    
+    This builds:
+    - `minigiac.exe`: Command-line executable
+    - `javagiac.dll`: Dynamic library for JNI integration
+  </Step>
+
+  <Step title="Run the executable">
+    ```bash
+    ./minigiac.exe
+    ```
+  </Step>
+</Steps>
+
+## Windows-Specific Configuration
+
+### Preprocessor Definitions
+
+The Windows build uses these specific definitions:
+
+| Definition | Purpose |
+|------------|----------|
+| `GIAC_MPQS` | Enable MPQS factorization algorithm |
+| `__MINGW_H` | Mark as MinGW build |
+| `MINGW32` | MinGW compatibility |
+| `HAVE_NO_SYS_TIMES_H` | sys/times.h not available |
+| `HAVE_NO_SYS_RESOURCE_WAIT_H` | sys/resource.h not available |
+| `HAVE_NO_PWD_H` | pwd.h not available |
+| `HAVE_NO_CWD` | No current working directory |
+| `NO_CLOCK` | Disable clock functions |
+| `usleep=` | Undefine usleep (not available) |
+| `YY_NO_UNISTD_H` | Don't use unistd.h in lexer |
+
+### Compiler Flags
+
+```cpp
+-fpermissive        # Allow some non-conforming code
+-std=c++0x          # C++11 support
+```
+
+### Linker Configuration
+
+The Windows build uses static linking to minimize dependencies:
+
+```bash
+-Wl,--add-stdcall-alias    # Add stdcall aliases for exports
+-s                          # Strip symbols
+-static-libgcc              # Link libgcc statically
+-static-libstdc++           # Link libstdc++ statically
+```
+
+This creates a self-contained executable with no external DLL dependencies.
+
+## Building JNI Library
+
+The JNI library (`javagiac.dll`) is built with a module definition file:
+
+```bash
+# The giac.def file is located at:
+src/jni/giac.def
+```
+
+Build specifically for JNI:
+
+```bash
+mingw32-make javagiac
+```
+
+The output will be:
+```
+build/libjavagiac.dll
+```
+
+## Building with Gradle
+
+Windows builds are supported through Gradle when using MSYS2:
+
+<Steps>
+  <Step title="Set up environment">
+    Ensure you're in the CLANG64 environment and have all prerequisites installed.
+  </Step>
+
+  <Step title="Build Windows 64-bit library">
+    ```bash
+    ../gradlew javagiacWin64SharedLibrary
+    ```
+  </Step>
+
+  <Step title="Output location">
+    The library will be built at:
+    ```
+    build/libs/javagiac/shared/win64/javagiac.dll
+    ```
+  </Step>
+</Steps>
+
+## Static vs Dynamic Linking
+
+### Static Linking (Default)
+
+The default configuration uses static linking for all dependencies:
+
+```cmake
+target_link_libraries(minigiac ${MPFR_STATIC} ${GMP_STATIC})
+```
+
+Benefits:
+- Single executable, no DLL dependencies
+- Better portability
+- No version conflicts
+
+Drawback:
+- Larger executable size
+
+### Dynamic Linking
+
+To use dynamic linking instead, modify CMakeLists.txt:
+
+```cmake
+# Line 262, change from:
+target_link_libraries(minigiac ${MPFR_STATIC} ${GMP_STATIC})
+
+# To:
+target_link_libraries(minigiac mpfr gmp)
+```
+
+Then ensure the DLLs are in your PATH or the same directory as the executable.
+
+## Environment Detection
+
+CMake automatically detects your MSYS2 environment:
+
+```cmake
+if("$ENV{MSYSTEM}" STREQUAL "CLANG64")
+    message(STATUS "Using prebuilt gmp/mpfr for clang64")
+    # Uses src/jni/prebuilt/windows/clang64/
+endif()
+
+if("$ENV{MSYSTEM}" STREQUAL "CLANG32")
+    message(STATUS "Using prebuilt gmp/mpfr for clang32")
+    # Uses src/jni/prebuilt/windows/clang32/
+endif()
+```
+
+## Troubleshooting
+
+### Wrong MSYS2 Environment
+
+Error:
+```
+CMake Error: CMAKE_C_COMPILER not set
+```
+
+Solution: Ensure you're using **MSYS2 CLANG64** (or CLANG32), not MINGW64 or MSYS2.
+
+### Missing Compiler
+
+Error:
+```
+The C compiler "clang" is not able to compile a simple test program
+```
+
+Solution: Install the Clang compiler:
+```bash
+pacman -S mingw-w64-clang-x86_64-cc
+```
+
+### Library Not Found
+
+Error:
+```
+Unable to find library gmp in src/jni/prebuilt/windows/clang64/
+```
+
+Solution: Verify the prebuilt directory structure:
+```bash
+ls src/jni/prebuilt/windows/clang64/
+# Should contain: libgmp.a, libmpfr.a
+```
+
+If missing, install system libraries:
+```bash
+pacman -S mingw-w64-clang-x86_64-gmp mingw-w64-clang-x86_64-mpfr
+```
+
+### CMake Generator Issues
+
+Error:
+```
+CMake Error: Could not create named generator MinGW Makefiles
+```
+
+Solution: Install mingw32-make:
+```bash
+pacman -S mingw-w64-clang-x86_64-make
+```
+
+### Permission Denied Errors
+
+Error:
+```
+bash: ./minigiac.exe: Permission denied
+```
+
+Solution: The file might be locked by antivirus. Try:
+```bash
+chmod +x minigiac.exe
+./minigiac.exe
+```
+
+Or run from Windows Command Prompt:
+```cmd
+minigiac.exe
+```
+
+### Missing DLL Errors (Dynamic Build)
+
+Error when running:
+```
+The code execution cannot proceed because libgmp-10.dll was not found
+```
+
+Solution: Either:
+1. Copy required DLLs to the executable directory
+2. Add MSYS2 bin directory to PATH:
+   ```bash
+   export PATH="/clang64/bin:$PATH"
+   ```
+3. Use static linking (default configuration)
+
+## 32-bit Build Instructions
+
+For 32-bit builds, use CLANG32 flavor:
+
+<Steps>
+  <Step title="Launch CLANG32 environment">
+    Open **MSYS2 CLANG32** from Start menu.
+  </Step>
+
+  <Step title="Install 32-bit packages">
+    ```bash
+    pacman -S mingw-w64-clang-i686-cc \
+              mingw-w64-clang-i686-cmake \
+              mingw-w64-clang-i686-make
+    ```
+  </Step>
+
+  <Step title="Build with CMake">
+    ```bash
+    mkdir build
+    cd build
+    CC=clang CXX=clang++ cmake -G "MinGW Makefiles" ..
+    mingw32-make
+    ```
+  </Step>
+</Steps>
+
+CMake will automatically detect CLANG32 and use libraries from `src/jni/prebuilt/windows/clang32/`.
+
+## Visual Studio Support
+
+<Warning>
+The current build system is optimized for MSYS2/Clang. Visual Studio support is limited. For Visual Studio builds, additional configuration would be required.
+</Warning>
+
+The `build.gradle` file includes a Visual Studio plugin, but it's primarily used for cross-platform development. For pure Windows development, MSYS2 with Clang is the recommended approach.
+
+## Building for Distribution
+
+For release builds:
+
+```bash
+CC=clang CXX=clang++ cmake -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles" ..
+mingw32-make
+```
+
+This enables optimizations and produces smaller binaries.
+
+## Testing the Build
+
+Run basic tests:
+
+```bash
+# Interactive mode
+./minigiac.exe
+
+# Test with expression
+echo "factor(x^2-1)" | ./minigiac.exe
+```
+
+Expected output:
+```
+(x-1)*(x+1)
+```

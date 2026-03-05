@@ -1,0 +1,404 @@
+---
+title: Plotting Functions
+description: 2D and 3D plotting functions for visualizing mathematical data
+---
+
+## Overview
+
+Giac provides comprehensive plotting capabilities for both 2D and 3D graphics, including parametric plots, implicit plots, polar plots, and field plots.
+
+## 2D Plotting Functions
+
+### plotfunc
+
+```cpp
+gen plotfunc(const gen & f, const gen & vars, const vecteur & attributs,
+             int densityplot, double function_xmin, double function_xmax,
+             double function_ymin, double function_ymax,
+             double function_zmin, double function_zmax,
+             int nstep, int jstep, bool showeq, GIAC_CONTEXT);
+```
+
+Plots a function or set of functions.
+
+<ParamField path="f" type="gen">
+  The function(s) to plot
+</ParamField>
+
+<ParamField path="vars" type="gen">
+  The variable(s) to use
+</ParamField>
+
+<ParamField path="attributs" type="vecteur">
+  Plot attributes (color, style, etc.)
+</ParamField>
+
+<ParamField path="densityplot" type="int">
+  Whether to create a density plot
+</ParamField>
+
+<ParamField path="function_xmin" type="double">
+  Minimum x value
+</ParamField>
+
+<ParamField path="function_xmax" type="double">
+  Maximum x value
+</ParamField>
+
+<ParamField path="nstep" type="int">
+  Number of steps for evaluation
+</ParamField>
+
+<ParamField path="showeq" type="bool">
+  Whether to show equation
+</ParamField>
+
+### plotparam
+
+```cpp
+gen plotparam(const gen & f, const gen & vars, const vecteur & attributs,
+              int densityplot, double function_xmin, double function_xmax,
+              double function_ymin, double function_ymax,
+              double function_tmin, double function_tmax,
+              double function_tstep, const gen & equation,
+              const gen & parameq, const context * contextptr);
+```
+
+Creates parametric plots in 2D.
+
+<ParamField path="f" type="gen">
+  Parametric equation(s)
+</ParamField>
+
+<ParamField path="vars" type="gen">
+  Parameter variable(s)
+</ParamField>
+
+<ParamField path="function_tmin" type="double">
+  Minimum parameter value
+</ParamField>
+
+<ParamField path="function_tmax" type="double">
+  Maximum parameter value
+</ParamField>
+
+<ParamField path="function_tstep" type="double">
+  Parameter step size
+</ParamField>
+
+### plotimplicit
+
+```cpp
+gen plotimplicit(const gen& f_orig, const gen& x, const gen & y,
+                 double xmin, double xmax, double ymin, double ymax,
+                 int nxstep, int nystep, double eps,
+                 const vecteur & attributs, bool unfactored,
+                 bool cklinear, const context * contextptr, int ckgeo2d);
+```
+
+Plots implicit equations in 2D.
+
+<ParamField path="f_orig" type="gen">
+  The implicit equation f(x,y)=0
+</ParamField>
+
+<ParamField path="x" type="gen">
+  The x variable
+</ParamField>
+
+<ParamField path="y" type="gen">
+  The y variable
+</ParamField>
+
+<ParamField path="nxstep" type="int">
+  Number of x steps
+</ParamField>
+
+<ParamField path="nystep" type="int">
+  Number of y steps
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Precision tolerance
+</ParamField>
+
+### plotfield
+
+```cpp
+gen plotfield(const gen & xp, const gen & yp,
+              const gen & x, const gen & y,
+              double xmin, double xmax, double xstep,
+              double ymin, double ymax, double ystep,
+              double scaling, vecteur & attributs,
+              bool normalize, const context * contextptr);
+```
+
+Plots a vector field.
+
+<ParamField path="xp" type="gen">
+  x-component of the field
+</ParamField>
+
+<ParamField path="yp" type="gen">
+  y-component of the field
+</ParamField>
+
+<ParamField path="xstep" type="double">
+  Step size in x direction
+</ParamField>
+
+<ParamField path="ystep" type="double">
+  Step size in y direction
+</ParamField>
+
+<ParamField path="scaling" type="double">
+  Scaling factor for vectors
+</ParamField>
+
+<ParamField path="normalize" type="bool">
+  Whether to normalize vectors
+</ParamField>
+
+### plotcontour
+
+```cpp
+gen plotcontour(const gen & f0, bool contour, GIAC_CONTEXT);
+```
+
+Creates contour plots of a function.
+
+<ParamField path="f0" type="gen">
+  The function to plot
+</ParamField>
+
+<ParamField path="contour" type="bool">
+  Whether to show contour lines
+</ParamField>
+
+### plotseq
+
+```cpp
+gen plotseq(const gen& f, const gen& x, double x0,
+            double xmin, double xmax, int niter,
+            const vecteur & attributs,
+            const context * contextptr, bool print);
+```
+
+Plots a sequence (cobweb plot).
+
+<ParamField path="f" type="gen">
+  The iteration function
+</ParamField>
+
+<ParamField path="x" type="gen">
+  The variable
+</ParamField>
+
+<ParamField path="x0" type="double">
+  Initial value
+</ParamField>
+
+<ParamField path="niter" type="int">
+  Number of iterations
+</ParamField>
+
+## 3D Plotting Functions
+
+### plotparam3d
+
+```cpp
+gen plotparam3d(const gen & f, const vecteur & vars,
+                double function_xmin, double function_xmax,
+                double function_ymin, double function_ymax,
+                double function_zmin, double function_zmax,
+                double function_umin, double function_umax,
+                double function_vmin, double function_vmax,
+                bool clrplot, bool f_autoscale,
+                const vecteur & attributs,
+                double ustep, double vstep,
+                const gen & eq, const vecteur & eqvars,
+                GIAC_CONTEXT);
+```
+
+Creates parametric 3D plots.
+
+<ParamField path="f" type="gen">
+  Parametric equation(s) [x(u,v), y(u,v), z(u,v)]
+</ParamField>
+
+<ParamField path="vars" type="vecteur">
+  Parameter variables [u, v]
+</ParamField>
+
+<ParamField path="function_umin" type="double">
+  Minimum u parameter value
+</ParamField>
+
+<ParamField path="function_umax" type="double">
+  Maximum u parameter value
+</ParamField>
+
+<ParamField path="function_vmin" type="double">
+  Minimum v parameter value
+</ParamField>
+
+<ParamField path="function_vmax" type="double">
+  Maximum v parameter value
+</ParamField>
+
+<ParamField path="ustep" type="double">
+  Step size for u parameter
+</ParamField>
+
+<ParamField path="vstep" type="double">
+  Step size for v parameter
+</ParamField>
+
+<ParamField path="f_autoscale" type="bool">
+  Whether to automatically scale the plot
+</ParamField>
+
+### plotimplicit (3D)
+
+```cpp
+gen plotimplicit(const gen& f_orig,
+                 const gen& x, const gen & y, const gen & z,
+                 double xmin, double xmax,
+                 double ymin, double ymax,
+                 double zmin, double zmax,
+                 int nxstep, int nystep, int nzstep,
+                 double eps, const vecteur & attributs,
+                 bool unfactored, bool cklinear,
+                 const context * contextptr);
+```
+
+Plots implicit equations in 3D.
+
+<ParamField path="f_orig" type="gen">
+  The implicit equation f(x,y,z)=0
+</ParamField>
+
+<ParamField path="x" type="gen">
+  The x variable
+</ParamField>
+
+<ParamField path="y" type="gen">
+  The y variable
+</ParamField>
+
+<ParamField path="z" type="gen">
+  The z variable
+</ParamField>
+
+<ParamField path="nxstep" type="int">
+  Number of x steps
+</ParamField>
+
+<ParamField path="nystep" type="int">
+  Number of y steps
+</ParamField>
+
+<ParamField path="nzstep" type="int">
+  Number of z steps
+</ParamField>
+
+## Utility Functions
+
+### ticks
+
+```cpp
+vecteur ticks(double xmin, double xmax, bool bounds);
+```
+
+Generates tick marks for axes.
+
+<ParamField path="xmin" type="double">
+  Minimum value
+</ParamField>
+
+<ParamField path="xmax" type="double">
+  Maximum value
+</ParamField>
+
+<ParamField path="bounds" type="bool">
+  Whether to include boundary values
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of tick positions with simple decimal representation
+</ResponseField>
+
+### plot_array
+
+```cpp
+gen plot_array(const std::vector<std::vector<double>> & fij,
+               int imax, int jmax,
+               double xmin, double xmax, double dx,
+               double ymin, double ymax, double dy,
+               const vecteur & lz, const vecteur & attributs,
+               bool contour, int pal, GIAC_CONTEXT);
+```
+
+Plots a 2D array of values.
+
+<ParamField path="fij" type="std::vector<std::vector<double>>">
+  2D array of function values
+</ParamField>
+
+<ParamField path="imax" type="int">
+  Number of rows
+</ParamField>
+
+<ParamField path="jmax" type="int">
+  Number of columns
+</ParamField>
+
+<ParamField path="contour" type="bool">
+  Whether to create contour plot
+</ParamField>
+
+<ParamField path="pal" type="int">
+  Color palette index
+</ParamField>
+
+### colormap functions
+
+```cpp
+bool is_colormap_index(int pal);
+bool is_colormap_cyclic(int pal);
+int colormap_color(int pal, double t, GIAC_CONTEXT);
+bool colormap_color_rgb(int pal, double t, int &c, int &r, int &g, int &b,
+                        GIAC_CONTEXT);
+```
+
+Colormap utility functions for customizing plot colors.
+
+<ParamField path="pal" type="int">
+  Colormap palette index
+</ParamField>
+
+<ParamField path="t" type="double">
+  Value between 0 and 1 to map to color
+</ParamField>
+
+## Global Variables
+
+```cpp
+extern double gnuplot_xmin, gnuplot_xmax;
+extern double gnuplot_ymin, gnuplot_ymax;
+extern double gnuplot_zmin, gnuplot_zmax;
+extern double gnuplot_tmin, gnuplot_tmax, gnuplot_tstep;
+extern double global_window_xmin, global_window_xmax;
+extern double global_window_ymin, global_window_ymax;
+extern double x_tick, y_tick;
+extern bool autoscale;
+extern int PARAM_STEP;
+extern int gnuplot_pixels_per_eval;
+```
+
+Global variables controlling plot ranges and behavior.
+
+## See Also
+
+- [Output Formatting](/api/utilities/formatting) - Export plots to various formats
+- [Geometric Objects](/api/geometry/objects) - Create geometric shapes for plotting

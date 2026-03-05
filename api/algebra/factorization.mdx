@@ -1,0 +1,335 @@
+---
+title: Factorization Functions
+description: Polynomial factorization algorithms and utilities in Giac
+---
+
+## Overview
+
+Giac provides comprehensive polynomial factorization capabilities, including modular factorization, distinct degree factorization, and multivariate factorization using various algorithms.
+
+## Modular Factorization
+
+### Distinct Degree Factorization (DDF)
+
+```cpp modfactor.h:52
+bool ddf(const modpoly & q, const std::vector<modpoly> & qmat, 
+         environment *env, std::vector< facteur<modpoly> >& v);
+```
+
+Decomposes a square-free polynomial into factors grouped by degree. Uses the `qmat` (q-matrix) for efficient computation.
+
+<ParamField path="q" type="const modpoly &">
+  Square-free polynomial to factor modulo a prime
+</ParamField>
+
+<ParamField path="qmat" type="const std::vector<modpoly> &">
+  Precomputed q-matrix for x^(p^i) mod q
+</ParamField>
+
+<ParamField path="env" type="environment *">
+  Modular arithmetic environment
+</ParamField>
+
+<ParamField path="v" type="std::vector<facteur<modpoly>> &">
+  Output: vector of (polynomial, degree) pairs
+</ParamField>
+
+### Q-Matrix Computation
+
+```cpp modfactor.h:42
+void qmatrix(const modpoly & q, environment * env, 
+             std::vector<modpoly> & v, int jstart=0);
+```
+
+Computes `v[i] = x^(p*i) mod q` for use in factorization algorithms. Essential for efficient DDF and Cantor-Zassenhaus.
+
+<CodeGroup>
+```cpp Example
+modpoly q = {1, 0, 1, 1};  // x^3 + x + 1
+environment env;
+env.modulo = 5;
+env.moduloon = true;
+
+std::vector<modpoly> qmat;
+qmatrix(q, &env, qmat);
+
+std::vector<facteur<modpoly>> factors;
+ddf(q, qmat, &env, factors);
+```
+</CodeGroup>
+
+### Cantor-Zassenhaus Algorithm
+
+```cpp modfactor.h:54-55
+bool cantor_zassenhaus(const modpoly & ddfactor, int i, 
+                       const std::vector<modpoly> & qmat, 
+                       environment * env, std::vector<modpoly> & v);
+```
+
+Splits a polynomial known to have factors of degree `i` into irreducible factors using random polynomial powering.
+
+```cpp modfactor.h:55
+bool cantor_zassenhaus(const std::vector< facteur<modpoly> > & v_in,
+                       const std::vector<modpoly> & qmat, 
+                       environment * env, std::vector<modpoly> & v);
+```
+
+Processes all factors from DDF output.
+
+<ParamField path="ddfactor" type="const modpoly &">
+  Polynomial with all irreducible factors of degree i
+</ParamField>
+
+<ParamField path="i" type="int">
+  Degree of each factor
+</ParamField>
+
+<ParamField path="v" type="std::vector<modpoly> &">
+  Output: vector of irreducible factors
+</ParamField>
+
+## Root Finding
+
+### roots()
+
+```cpp modfactor.h:46-47
+bool roots(const modpoly & q, environment * env, 
+           vecteur & v, std::vector<modpoly> & w);
+```
+
+Finds modular roots and corresponding linear factors of a polynomial.
+
+<ParamField path="v" type="vecteur &">
+  Output: vector of roots
+</ParamField>
+
+<ParamField path="w" type="std::vector<modpoly> &">
+  Output: vector of linear factors (x - root)
+</ParamField>
+
+### Linear Factor Extraction
+
+```cpp modfactor.h:48-50
+int do_linearfind(const polynome & q, environment * env, 
+                  polynome & qrem, vectpoly & v, 
+                  vecteur & croots, int & i);
+
+int linearfind(const polynome & q, environment * env, 
+               polynome & qrem, vectpoly & v, int &ithprime);
+```
+
+Extracts linear factors from polynomials over Z or Z[i].
+
+## Hensel Lifting
+
+### liftl()
+
+```cpp modfactor.h:65
+bool liftl(environment * env, dense_POLY1 & q, gen &bound, 
+           std::vector<modpoly> & v_in, vectpoly & v_out);
+```
+
+Lifts a factorization from Z/pZ to Z/p^kZ using Hensel's lemma, where k is chosen large enough based on Mignotte bound.
+
+<ParamField path="env" type="environment *">
+  Modified to contain p^k after lifting (modulo is updated)
+</ParamField>
+
+<ParamField path="q" type="dense_POLY1 &">
+  Polynomial to factor over integers
+</ParamField>
+
+<ParamField path="bound" type="gen &">
+  Mignotte bound for coefficient size
+</ParamField>
+
+<ParamField path="v_in" type="std::vector<modpoly> &">
+  Input: factorization modulo p
+</ParamField>
+
+<ParamField path="v_out" type="vectpoly &">
+  Output: lifted factorization modulo p^k
+</ParamField>
+
+### combine()
+
+```cpp modfactor.h:68
+void combine(const dense_POLY1 & q, const std::vector<modpoly> & v_in, 
+             environment * env, vectpoly & v_out, 
+             std::vector<bool> & possible_degrees, int k=1);
+```
+
+Combines modular factors to find true factorization over Z. Tests combinations of k or more factors.
+
+<CodeGroup>
+```cpp Hensel Lifting Example
+dense_POLY1 q = /* polynomial */;
+environment env;
+env.modulo = 101;
+env.moduloon = true;
+
+std::vector<modpoly> mod_factors;
+// ... compute modular factorization ...
+
+gen bound = mignotte_bound(q);
+vectpoly true_factors;
+liftl(&env, q, bound, mod_factors, true_factors);
+
+std::vector<bool> possible_deg(q.size(), true);
+vectpoly final_factors;
+combine(q, mod_factors, &env, final_factors, possible_deg);
+```
+</CodeGroup>
+
+## Square-Free Factorization
+
+### factorunivsqff()
+
+```cpp modfactor.h:71
+bool factorunivsqff(const polynome & q, environment * env, 
+                    vectpoly & v, int & ithprime, 
+                    int debug, int modfactor_primes);
+```
+
+Factors a square-free univariate polynomial over Z using modular methods.
+
+<ParamField path="ithprime" type="int &">
+  Index of prime to use (modified if prime is bad)
+</ParamField>
+
+<ParamField path="debug" type="int">
+  Debug level for verbose output
+</ParamField>
+
+<ParamField path="modfactor_primes" type="int">
+  Number of primes to try
+</ParamField>
+
+## Bounds and Estimates
+
+### Mignotte Bound
+
+```cpp modfactor.h:60-61
+gen mignotte_bound(const dense_POLY1 & p);
+gen mignotte_bound(const polynome & p);
+```
+
+Computes the Mignotte bound: an upper bound on the absolute values of coefficients in any factor of p.
+
+<Info>
+The Mignotte bound for a polynomial of degree n with coefficients bounded by M is:
+
+`bound = 2^n * sqrt(n+1) * M`
+
+This determines how high to lift in Hensel's lemma.
+</Info>
+
+### Factor Count Estimation
+
+```cpp modfactor.h:57
+int nfact(const std::vector< facteur<modpoly> > & v, 
+          bool * possible_degrees, int maxdeg);
+```
+
+Estimates the number of factors from DDF output and updates possible degree information.
+
+## Utility Functions
+
+### intersect()
+
+```cpp modfactor.h:37
+void intersect(std::vector<bool>::iterator tab, 
+               std::vector<bool>::iterator othertab, int size);
+```
+
+Computes intersection of two boolean arrays (for tracking possible factor degrees).
+
+### sigma()
+
+```cpp modfactor.h:38
+int sigma(const std::vector<bool> & deg);
+```
+
+Counts the number of possible degrees.
+
+### xtoxpowerp()
+
+```cpp modfactor.h:44
+void xtoxpowerp(const modpoly & r, const std::vector<modpoly> & v,
+                environment * env, int qsize, modpoly & s);
+```
+
+Computes `s(x) = r(x^p) mod q` using precomputed q-matrix.
+
+## Irreducibility Testing
+
+```cpp modfactor.h:73
+gen _is_irreducible(const gen & args, GIAC_CONTEXT);
+```
+
+Tests whether a polynomial is irreducible.
+
+<CodeGroup>
+```cpp C++ Usage
+gen poly = /* polynomial expression */;
+gen result = _is_irreducible(poly, context);
+// Returns true if irreducible, false otherwise
+```
+
+```python Python Example
+from giacpy import giac
+
+# Test if x^3 + x + 1 is irreducible mod 2
+result = giac.is_irreducible("x^3+x+1 mod 2")
+print(result)  # True
+```
+</CodeGroup>
+
+## Algorithm Overview
+
+<Steps>
+  <Step title="Modular Reduction">
+    Choose a prime p and reduce the polynomial modulo p
+  </Step>
+  
+  <Step title="Square-Free Factorization">
+    Factor out repeated factors using GCD with derivative
+  </Step>
+  
+  <Step title="Distinct Degree Factorization">
+    Use DDF to group factors by degree
+  </Step>
+  
+  <Step title="Equal Degree Factorization">
+    Apply Cantor-Zassenhaus to split factors of same degree
+  </Step>
+  
+  <Step title="Hensel Lifting">
+    Lift factorization to Z/p^k with k large enough
+  </Step>
+  
+  <Step title="Factor Combination">
+    Try combinations to find true factors over Z
+  </Step>
+</Steps>
+
+## Performance Considerations
+
+<Warning>
+**Prime Selection**: Bad primes (where the polynomial has repeated factors modulo p) must be avoided. The algorithm automatically tries different primes if needed.
+</Warning>
+
+<Tip>
+**Q-Matrix Reuse**: When factoring multiple polynomials with the same modular reduction, reuse the q-matrix computation for better performance.
+</Tip>
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Polynomial API" icon="function" href="/api/algebra/polynomials">
+    Core polynomial operations
+  </Card>
+  <Card title="Algebraic Extensions" icon="calculator" href="/api/algebra/algebraic-extensions">
+    Work with algebraic number fields
+  </Card>
+</CardGroup>

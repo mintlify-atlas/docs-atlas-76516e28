@@ -1,122 +1,122 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Giac",
+  "theme": "sequoia",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#e2e4e6",
+    "light": "#113251",
+    "dark": "#7c94a4"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/98c0792f-de5c-43d2-bfb5-56ae1e2cc0ef.png",
+  "logo": {
+    "light": "https://media.brand.dev/3ad21051-fbe0-4f69-8ef2-2f754a2707f6.png",
+    "dark": "https://media.brand.dev/3ad21051-fbe0-4f69-8ef2-2f754a2707f6.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/geogebra/giac"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/geogebra/giac"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/architecture",
+              "concepts/data-types",
+              "concepts/contexts"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Platform Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "platforms/cpp",
+              "platforms/nodejs",
+              "platforms/android",
+              "platforms/webassembly"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Building & Compilation",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "build/linux",
+              "build/macos",
+              "build/windows",
+              "build/cross-compilation"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core API",
             "pages": [
-              "api-reference/introduction"
+              "api/overview",
+              "api/gen",
+              "api/context",
+              "api/evaluation"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Algebra",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/algebra/polynomials",
+              "api/algebra/factorization",
+              "api/algebra/algebraic-extensions"
+            ]
+          },
+          {
+            "group": "Calculus",
+            "pages": [
+              "api/calculus/derivatives",
+              "api/calculus/integration",
+              "api/calculus/differential-equations",
+              "api/calculus/series"
+            ]
+          },
+          {
+            "group": "Linear Algebra",
+            "pages": [
+              "api/linear/vectors",
+              "api/linear/matrices",
+              "api/linear/gaussian-elimination"
+            ]
+          },
+          {
+            "group": "Solvers",
+            "pages": [
+              "api/solvers/equation-solving",
+              "api/solvers/sturm-sequences"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utilities/plotting",
+              "api/utilities/formatting"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

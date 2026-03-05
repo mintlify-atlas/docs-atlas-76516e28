@@ -1,0 +1,386 @@
+---
+title: "Integration Functions"
+description: "Functions for symbolic and numerical integration"
+---
+
+## Overview
+
+Giac provides powerful integration capabilities including symbolic integration (using multiple algorithms like Risch), numerical integration (Romberg, Gauss quadrature), and special integration techniques for definite integrals.
+
+## Symbolic Integration
+
+### integrate
+
+Main integration function supporting both indefinite and definite integrals.
+
+```cpp
+gen integrate_gen(const gen & e, const gen & f, GIAC_CONTEXT);
+gen integrate_id(const gen & e, const identificateur & x, GIAC_CONTEXT);
+gen _integrate(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  Expression to integrate
+</ParamField>
+
+<ParamField path="x" type="identificateur" required>
+  Integration variable
+</ParamField>
+
+<ParamField path="args" type="gen">
+  For _integrate: [expr, var] or [expr, var, lower_bound, upper_bound]
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  The integral (symbolic expression)
+</ResponseField>
+
+<CodeGroup>
+```cpp Indefinite integral
+// ∫ x^2 dx
+identificateur x("x");
+gen expr = pow(x, 2);
+gen result = integrate_id(expr, x, context0);
+// Returns: x^3/3
+```
+
+```cpp Definite integral
+// ∫₀¹ x^2 dx
+gen args = makesequence(pow(x, 2), x, 0, 1);
+gen result = _integrate(args, context0);
+// Returns: 1/3
+```
+
+```cpp Trigonometric integral
+// ∫ sin(x) dx
+gen result = integrate_id(sin(x), x, context0);
+// Returns: -cos(x)
+```
+</CodeGroup>
+
+### integrate_gen_rem
+
+Integration with remainder tracking.
+
+```cpp
+gen integrate_gen_rem(const gen & e, const gen & x, gen & remains_to_integrate, 
+                      int intmode, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  Expression to integrate
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Integration variable
+</ParamField>
+
+<ParamField path="remains_to_integrate" type="gen&" required>
+  Output: parts that could not be integrated
+</ParamField>
+
+<ParamField path="intmode" type="int" required>
+  Integration mode flags (bit 0: sqrt control, bit 1: step info, bit 2: surd replaced)
+</ParamField>
+
+### risch
+
+Risch algorithm for symbolic integration (handles elementary functions).
+
+```cpp
+gen risch(const gen & e_orig, const identificateur & x, 
+          gen & remains_to_integrate, GIAC_CONTEXT);
+gen _risch(const gen & g, GIAC_CONTEXT);
+```
+
+<ParamField path="e_orig" type="gen" required>
+  Expression to integrate
+</ParamField>
+
+<ParamField path="x" type="identificateur" required>
+  Integration variable
+</ParamField>
+
+<ParamField path="remains_to_integrate" type="gen&" required>
+  Output: non-elementary parts
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Elementary part of the integral
+</ResponseField>
+
+The Risch algorithm provides a complete solution for integration of elementary functions, determining whether an integral has an elementary form.
+
+## Numerical Integration
+
+### romberg
+
+Romberg integration method for numerical approximation.
+
+```cpp
+gen romberg(const gen & f0, const gen & x0, const gen & a, const gen & b, 
+            const gen & eps, int nmax, GIAC_CONTEXT);
+gen _romberg(const gen & args, GIAC_CONTEXT);
+double rombergo(const gen & f, const gen & x, const gen & a, const gen & b, 
+                int n, GIAC_CONTEXT);
+double rombergt(const gen & f, const gen & x, const gen & a, const gen & b, 
+                int n, GIAC_CONTEXT);
+```
+
+<ParamField path="f0" type="gen" required>
+  Function to integrate
+</ParamField>
+
+<ParamField path="x0" type="gen" required>
+  Integration variable
+</ParamField>
+
+<ParamField path="a" type="gen" required>
+  Lower bound
+</ParamField>
+
+<ParamField path="b" type="gen" required>
+  Upper bound
+</ParamField>
+
+<ParamField path="eps" type="gen" required>
+  Desired accuracy
+</ParamField>
+
+<ParamField path="nmax" type="int" required>
+  Maximum number of iterations
+</ParamField>
+
+<CodeGroup>
+```cpp Romberg integration
+// Numerically compute ∫₀^π sin(x) dx
+gen f = sin(x);
+gen result = romberg(f, x, 0, cst_pi, 1e-10, 20, context0);
+// Returns: ≈ 2.0
+```
+</CodeGroup>
+
+### gaussquad
+
+Gauss quadrature for numerical integration.
+
+```cpp
+gen _gaussquad(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="args" type="gen" required>
+  Arguments: [function, variable, lower_bound, upper_bound, num_points]
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Numerical approximation of the integral
+</ResponseField>
+
+Gauss quadrature provides highly accurate numerical integration using optimally chosen evaluation points.
+
+### evalf_int
+
+General numerical integration with method selection.
+
+```cpp
+gen evalf_int(const gen & f0, const gen & x0, const gen & a, const gen & b, 
+              const gen & eps, int nmax, bool romberg_method, GIAC_CONTEXT, 
+              bool exactcheck=true);
+```
+
+<ParamField path="romberg_method" type="bool" required>
+  If true, use Romberg method; otherwise use adaptive method
+</ParamField>
+
+<ParamField path="exactcheck" type="bool">
+  Check for exact symbolic result first
+</ParamField>
+
+## Special Integration Functions
+
+### intgab
+
+Definite integration with advanced techniques (residue theorem, symmetry).
+
+```cpp
+bool intgab(const gen & g, const gen & x, const gen & a, const gen & b, 
+            gen & res, GIAC_CONTEXT);
+```
+
+<ParamField path="g" type="gen" required>
+  Function to integrate
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Integration variable
+</ParamField>
+
+<ParamField path="a" type="gen" required>
+  Lower bound
+</ParamField>
+
+<ParamField path="b" type="gen" required>
+  Upper bound
+</ParamField>
+
+<ParamField path="res" type="gen&" required>
+  Output: result of integration
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if integration succeeded
+</ResponseField>
+
+This function uses special techniques like:
+- Residue theorem for complex integrals
+- Symmetry detection (even/odd functions)
+- Meromorphic function handling
+
+### linear_integrate
+
+Integration using linearity.
+
+```cpp
+gen linear_integrate(const gen & e, const gen & x, gen & remains_to_integrate, 
+                     int intmode, GIAC_CONTEXT);
+```
+
+Decomposes the expression into linear terms and integrates term by term.
+
+## Utility Functions
+
+### is_constant_wrt
+
+Check if an expression is constant with respect to a variable.
+
+```cpp
+bool is_constant_wrt(const gen & e, const gen & x, GIAC_CONTEXT);
+```
+
+### is_linear_wrt
+
+Check if expression is linear in a variable and extract coefficients.
+
+```cpp
+bool is_linear_wrt(const gen & e, const gen & x, gen & a, gen & b, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  Expression to check
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Variable
+</ParamField>
+
+<ParamField path="a" type="gen&" required>
+  Output: coefficient of x (if linear)
+</ParamField>
+
+<ParamField path="b" type="gen&" required>
+  Output: constant term (if linear)
+</ParamField>
+
+Returns true if e = a*x + b.
+
+### is_quadratic_wrt
+
+Check if expression is quadratic in a variable.
+
+```cpp
+bool is_quadratic_wrt(const gen & e, const gen & x, gen & a, gen & b, gen & c, 
+                      GIAC_CONTEXT);
+```
+
+Returns true if e = a*x² + b*x + c.
+
+### preval
+
+Evaluate definite integral using fundamental theorem of calculus.
+
+```cpp
+gen preval(const gen & f, const gen & x, const gen & a, const gen & b, 
+           GIAC_CONTEXT);
+```
+
+Computes F(b) - F(a) where F is the antiderivative of f.
+
+## Summation
+
+### sum
+
+Discrete summation (analogue of integration).
+
+```cpp
+gen sum(const gen & e, const gen & x, gen & remains_to_sum, GIAC_CONTEXT);
+gen sum(const gen & e, const gen & x, const gen & a, const gen & b, GIAC_CONTEXT);
+gen _sum(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  Expression to sum
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Summation variable
+</ParamField>
+
+<ParamField path="a" type="gen">
+  Lower bound
+</ParamField>
+
+<ParamField path="b" type="gen">
+  Upper bound
+</ParamField>
+
+<CodeGroup>
+```cpp Finite sum
+// Σ(i=1 to n) i = n(n+1)/2
+gen result = sum(i, i, 1, n, context0);
+```
+
+```cpp Infinite sum
+// Σ(n=0 to ∞) 1/2^n = 2
+gen result = sum(pow(inv(2), n), n, 0, plus_inf, context0);
+```
+</CodeGroup>
+
+### rational_sum
+
+Summation of rational functions using Gosper's algorithm.
+
+```cpp
+bool rational_sum(const gen & e, const gen & x, gen & res, 
+                  gen & remains_to_sum, bool allow_psi, GIAC_CONTEXT);
+```
+
+### gosper
+
+Gosper's algorithm for hypergeometric summation.
+
+```cpp
+bool gosper(const polynome & P, const polynome & Q, const polynome & R, 
+            polynome & Y, gen & deno, GIAC_CONTEXT);
+```
+
+## Integration by Parts
+
+### ibpdv
+
+Integration by parts helper.
+
+```cpp
+gen _ibpdv(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="args" type="gen" required>
+  Arguments for integration by parts setup
+</ParamField>
+
+## Notes
+
+- Symbolic integration attempts multiple algorithms (Risch, rational function decomposition, pattern matching)
+- Numerical methods are used when symbolic integration fails or for approximations
+- The Romberg method is efficient for smooth functions
+- Gauss quadrature excels for polynomial integrands
+- Special techniques handle improper integrals and singularities

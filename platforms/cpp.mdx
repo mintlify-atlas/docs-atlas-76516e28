@@ -1,0 +1,368 @@
+---
+title: C++ Integration
+description: Integrate Giac computer algebra system into your C++ applications
+icon: code
+---
+
+Giac provides a powerful C++ API that allows you to integrate computer algebra capabilities directly into your C++ applications. This guide covers compilation, linking, and usage of the Giac library.
+
+## Prerequisites
+
+Before building Giac for C++, you need:
+
+- **C++ compiler** with C++11 support (GCC, Clang, or MSVC)
+- **CMake** 3.10 or higher
+- **GMP** (GNU Multiple Precision Arithmetic Library)
+- **MPFR** (Multiple Precision Floating-Point Reliable Library)
+
+<Tabs>
+  <Tab title="Linux">
+    ```bash
+    sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```bash
+    brew install cmake gmp mpfr
+    ```
+  </Tab>
+  <Tab title="Windows (MSYS2)">
+    ```bash
+    pacman -S base-devel mingw-w64-clang-x86_64-cc \
+              mingw-w64-clang-x86_64-gmp \
+              mingw-w64-clang-x86_64-mpfr \
+              mingw-w64-clang-x86_64-cmake \
+              mingw-w64-clang-x86_64-make
+    ```
+  </Tab>
+</Tabs>
+
+## Building with CMake
+
+Giac includes a complete CMake build system that works across all platforms.
+
+### Basic Build
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+### Windows Build
+
+For Windows with MSYS2 CLANG64:
+
+```bash
+mkdir build
+cd build
+CC=clang CXX=clang++ cmake -G "MinGW Makefiles" ..
+mingw32-make
+```
+
+<Note>
+For 32-bit builds, use the CLANG32 flavor and replace `x86_64` with `i686` in package names.
+</Note>
+
+## C++ API Usage
+
+### Basic Example
+
+Here's a simple example showing how to evaluate expressions using Giac:
+
+```cpp
+#include <giac.h>
+#include <iostream>
+#include <string>
+
+using namespace std;
+using namespace giac;
+
+int main() {
+    context ct;
+    
+    // Evaluate a simple expression
+    gen g("expand((x+y)^3)", &ct);
+    string result = giac::print(giac::eval(g, &ct), &ct);
+    cout << "Result: " << result << endl;
+    
+    return 0;
+}
+```
+
+**Expected output:**
+```
+Result: x^3+y^3+3*x*y^2+3*x^2*y
+```
+
+### Creating a CAS Wrapper Library
+
+You can create a clean API wrapper for your applications:
+
+**GeoGebraCAS.h**
+```cpp
+#ifdef _WIN32
+#ifdef GEOGEBRACAS_EXPORTS
+#define GEOGEBRACAS_API __declspec(dllexport) 
+#else
+#define GEOGEBRACAS_API __declspec(dllimport) 
+#endif
+#else
+#define GEOGEBRACAS_API
+#endif
+
+using namespace std;
+#include <string>
+
+extern "C" {
+    GEOGEBRACAS_API void initializeCAS();
+    GEOGEBRACAS_API string evaluateCAS(string command);
+};
+```
+
+**GeoGebraCAS.cc**
+```cpp
+#include "GeoGebraCAS.h"
+#include <stdexcept>
+#include <giac.h>
+
+using namespace std;
+using namespace giac;
+
+#ifndef _WIN32
+#define EXPORT __attribute__((visibility("default")))
+__attribute__((constructor))
+static void initializer(void) { }
+__attribute__((destructor))
+static void finalizer(void) { }
+#else
+#define EXPORT
+#endif
+
+context ct;
+
+extern "C" {
+    EXPORT void initializeCAS() { return; }
+    
+    EXPORT string evaluateCAS(string command) {
+        gen e(string(command), &ct);
+        try {
+            return giac::print(giac::eval(e, &ct), &ct);
+        } catch (std::runtime_error & err) {
+            cerr << err.what() << endl;
+        }
+    }
+}
+```
+
+### Advanced Examples
+
+<AccordionGroup>
+  <Accordion title="Solving Equations">
+    ```cpp
+    context ct;
+    
+    // Solve quadratic equation
+    gen g("solve(x^2-3*x+2=0)", &ct);
+    string result = giac::print(giac::eval(g, &ct), &ct);
+    cout << result << endl; // Output: [1,2]
+    ```
+  </Accordion>
+
+  <Accordion title="Symbolic Differentiation">
+    ```cpp
+    context ct;
+    
+    // Define a function and compute its derivative
+    gen g1("f(x):=sin(x^2)", &ct);
+    giac::eval(g1, &ct);
+    
+    gen g2("f'(2)", &ct);
+    string result = giac::print(giac::eval(g2, &ct), &ct);
+    cout << "f'(2) = " << result << endl;
+    ```
+  </Accordion>
+
+  <Accordion title="Integration">
+    ```cpp
+    context ct;
+    
+    // Compute definite integral
+    gen g("int(1/(x^4+1)^4,x,0,+infinity)", &ct);
+    string result = giac::print(giac::eval(g, &ct), &ct);
+    cout << result << endl;
+    ```
+  </Accordion>
+
+  <Accordion title="Matrix Operations">
+    ```cpp
+    context ct;
+    
+    // Create matrix and compute eigenvalues
+    gen g1("A:=[[1,2],[3,4]]", &ct);
+    giac::eval(g1, &ct);
+    
+    gen g2("eigenvalues(A)", &ct);
+    string result = giac::print(giac::eval(g2, &ct), &ct);
+    cout << "Eigenvalues: " << result << endl;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Linking Against Giac
+
+### CMake Integration
+
+Add Giac to your CMakeLists.txt:
+
+```cmake
+cmake_minimum_required(VERSION 3.10)
+project(my_app)
+
+set(CMAKE_CXX_STANDARD 11)
+
+# Add Giac library
+add_subdirectory(giac)
+
+# Your executable
+add_executable(my_app main.cpp)
+
+# Link against Giac
+target_link_libraries(my_app giac mpfr gmp)
+target_include_directories(my_app PRIVATE giac/src/giac/headers)
+```
+
+### Manual Compilation
+
+```bash
+g++ -std=c++11 -I/path/to/giac/headers main.cpp \
+    -L/path/to/giac/lib -lgiac -lmpfr -lgmp -o my_app
+```
+
+## Build Definitions
+
+Giac uses several preprocessor definitions for platform-specific behavior:
+
+<CodeGroup>
+```cpp Common Definitions
+#define GIAC_GGB          // GeoGebra mode
+#define IN_GIAC           // Building inside Giac
+#define HAVE_MPFR         // MPFR support
+#define HAVE_LIBMPFR      // Link with MPFR
+#define TIMEOUT           // Enable timeouts
+#define VERSION="1.2.3"   // Version string
+```
+
+```cpp Linux-Specific
+#define HAVE_LIBPTHREAD      // pthread support
+#define HAVE_UNISTD_H        // unistd.h available
+#define HAVE_SYS_TIMES_H     // sys/times.h available
+#define HAVE_SYS_TIME_H      // sys/time.h available
+#define HAVE_SYSCONF         // sysconf() available
+```
+
+```cpp Windows-Specific
+#define __VISUALC__                 // Visual C++ mode
+#define HAVE_NO_SYS_TIMES_H         // No sys/times.h
+#define HAVE_NO_PWD_H               // No pwd.h
+#define HAVE_NO_SYS_RESOURCE_WAIT_H // No resource.h
+#define HAVE_NO_CWD                 // No getcwd
+#define MS_SMART                    // Windows smart mode
+```
+
+```cpp macOS-Specific
+#define NO_STDEXCEPT        // No stdexcept
+#define APPLE_SMART         // Apple smart mode
+#define NO_GETTEXT          // No gettext
+#define CLANG               // Clang compiler
+```
+</CodeGroup>
+
+## Error Handling
+
+Giac uses C++ exceptions for error reporting:
+
+```cpp
+#include <giac.h>
+#include <stdexcept>
+
+using namespace giac;
+
+context ct;
+
+try {
+    gen g("1/0", &ct);  // Division by zero
+    string result = giac::print(giac::eval(g, &ct), &ct);
+    cout << result << endl;
+} catch (std::runtime_error & err) {
+    cerr << "Error: " << err.what() << endl;
+}
+```
+
+## Static Linking
+
+<Warning>
+Static linking of MPFR may break in some cases. See the [MPFR FAQ](https://www.mpfr.org/faq.html#undef_ref1) if you encounter issues.
+</Warning>
+
+The build system prefers static linking for portability:
+
+```cmake
+# Use prebuilt static libraries
+find_static_library(gmp GMP_STATIC ${PREBUILT_DIR}/linux/x86-64/)
+find_static_library(mpfr MPFR_STATIC ${PREBUILT_DIR}/linux/x86-64/)
+
+target_link_libraries(my_app ${MPFR_STATIC} ${GMP_STATIC})
+```
+
+<Note>
+MPFR must be linked **before** GMP due to dependency order.
+</Note>
+
+## Performance Considerations
+
+- **Reuse context objects**: Creating a `giac::context` is expensive; reuse it for multiple evaluations
+- **Precompile expressions**: Parse expressions once and evaluate multiple times
+- **Thread safety**: Each thread should have its own `context` object
+- **Memory management**: Giac manages memory automatically through reference counting
+
+## GeoGebra Mode
+
+Giac includes a special GeoGebra mode with enhanced features:
+
+```cpp
+context ct;
+
+// Enable GeoGebra mode
+gen g1("caseval(\"init geogebra\")", &ct);
+cout << giac::print(giac::eval(g1, &ct), &ct) << endl;
+// Output: "geogebra mode on"
+
+// Lists become sets in GeoGebra mode
+gen g2("[1]", &ct);
+cout << giac::print(giac::eval(g2, &ct), &ct) << endl;
+// Output: {1}
+
+// Disable GeoGebra mode
+gen g3("caseval(\"close geogebra\")", &ct);
+cout << giac::print(giac::eval(g3, &ct), &ct) << endl;
+// Output: "geogebra mode off"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api/overview">
+    Explore the complete Giac function reference
+  </Card>
+  <Card title="Core API" icon="code" href="/api/gen">
+    Learn about the gen class and core types
+  </Card>
+  <Card title="Node.js Integration" icon="node-js" href="/platforms/nodejs">
+    Integrate Giac with Node.js applications
+  </Card>
+  <Card title="Android Integration" icon="android" href="/platforms/android">
+    Use Giac in Android apps
+  </Card>
+</CardGroup>

@@ -1,0 +1,419 @@
+---
+title: Output Formatting
+description: Functions for exporting and formatting mathematical expressions to various formats
+---
+
+## Overview
+
+Giac provides functions to export mathematical expressions and plots to various formats including LaTeX, MathML, SVG, Maple, and TI-89 formats.
+
+## LaTeX Export
+
+### gen2tex
+
+```cpp
+std::string gen2tex(const gen & e, GIAC_CONTEXT);
+```
+
+Converts a Giac expression to LaTeX format.
+
+<ParamField path="e" type="gen">
+  The expression to convert
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  LaTeX representation of the expression
+</ResponseField>
+
+**Example:**
+
+```cpp
+gen expr = symbolic(at_plus, makesequence(x, 2));
+std::string latex = gen2tex(expr, context0);
+// Returns: "x+2"
+```
+
+### graph2tex
+
+```cpp
+int graph2tex(const std::string & s, const vecteur & v,
+              double X1, double X2, double Y1, double Y2,
+              double xunit, double yunit, bool logo,
+              GIAC_CONTEXT);
+```
+
+Exports a 2D graphic object to LaTeX (TikZ/PSTricks).
+
+<ParamField path="s" type="std::string">
+  Output filename
+</ParamField>
+
+<ParamField path="v" type="vecteur">
+  Vector of graphic objects to export
+</ParamField>
+
+<ParamField path="X1" type="double">
+  Minimum x coordinate
+</ParamField>
+
+<ParamField path="X2" type="double">
+  Maximum x coordinate
+</ParamField>
+
+<ParamField path="Y1" type="double">
+  Minimum y coordinate
+</ParamField>
+
+<ParamField path="Y2" type="double">
+  Maximum y coordinate
+</ParamField>
+
+<ParamField path="xunit" type="double">
+  Horizontal scaling unit
+</ParamField>
+
+<ParamField path="yunit" type="double">
+  Vertical scaling unit
+</ParamField>
+
+<ParamField path="logo" type="bool">
+  Whether to include Giac logo
+</ParamField>
+
+### spread2tex
+
+```cpp
+std::string spread2tex(const matrice & m, int formule, GIAC_CONTEXT);
+```
+
+Converts a spreadsheet matrix to LaTeX table format.
+
+<ParamField path="m" type="matrice">
+  The matrix/spreadsheet data
+</ParamField>
+
+<ParamField path="formule" type="int">
+  Formula display mode
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  LaTeX table representation
+</ResponseField>
+
+### LaTeX Global Variables
+
+```cpp
+extern double horiz_latex;  // Horizontal dimension (default 12 cm)
+extern double vert_latex;   // Vertical dimension (default 12 cm)
+extern const char tex_preamble[];
+extern const char tex_end[];
+```
+
+Control the dimensions of LaTeX output figures.
+
+## MathML Export
+
+### gen2mathml
+
+```cpp
+std::string gen2mathml(const gen & e, GIAC_CONTEXT);
+std::string gen2mathml(const gen & e, std::string & svg, GIAC_CONTEXT);
+```
+
+Converts a Giac expression to MathML format.
+
+<ParamField path="e" type="gen">
+  The expression to convert
+</ParamField>
+
+<ParamField path="svg" type="std::string &">
+  Optional SVG output for graphics
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  MathML representation of the expression
+</ResponseField>
+
+### spread2mathml
+
+```cpp
+std::string spread2mathml(const matrice & m, int formule, GIAC_CONTEXT);
+```
+
+Converts a spreadsheet matrix to MathML table format.
+
+<ParamField path="m" type="matrice">
+  The matrix/spreadsheet data
+</ParamField>
+
+<ParamField path="formule" type="int">
+  Formula display mode
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  MathML table representation
+</ResponseField>
+
+### matrix2mathml
+
+```cpp
+std::string matrix2mathml(const matrice & m, GIAC_CONTEXT);
+```
+
+Converts a matrix to MathML format.
+
+<ParamField path="m" type="matrice">
+  The matrix to convert
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  MathML matrix representation
+</ResponseField>
+
+## SVG Export
+
+### gen2svg
+
+```cpp
+std::string gen2svg(const gen & e, GIAC_CONTEXT, bool withpreamble = false);
+
+std::string gen2svg(const gen & e,
+                    double xmin, double xmax,
+                    double ymin, double ymax,
+                    double ysurx, GIAC_CONTEXT,
+                    bool withpreamble = false);
+```
+
+Converts a graphic object to SVG format.
+
+<ParamField path="e" type="gen">
+  The graphic object to export
+</ParamField>
+
+<ParamField path="xmin" type="double">
+  Minimum x coordinate
+</ParamField>
+
+<ParamField path="xmax" type="double">
+  Maximum x coordinate
+</ParamField>
+
+<ParamField path="ymin" type="double">
+  Minimum y coordinate
+</ParamField>
+
+<ParamField path="ymax" type="double">
+  Maximum y coordinate
+</ParamField>
+
+<ParamField path="ysurx" type="double">
+  Aspect ratio (y/x)
+</ParamField>
+
+<ParamField path="withpreamble" type="bool">
+  Whether to include SVG XML preamble
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  SVG representation
+</ResponseField>
+
+### svg_preamble
+
+```cpp
+std::string svg_preamble(double width_cm, double height_cm,
+                         bool xml, int color);
+
+std::string svg_preamble(double svg_width_cm, double svg_height_cm,
+                         double xmin, double xmax,
+                         double ymin, double ymax,
+                         bool ortho, bool xml, int color);
+```
+
+Generates SVG preamble with specified dimensions.
+
+<ParamField path="width_cm" type="double">
+  Width in centimeters
+</ParamField>
+
+<ParamField path="height_cm" type="double">
+  Height in centimeters
+</ParamField>
+
+<ParamField path="xml" type="bool">
+  Whether to include XML declaration
+</ParamField>
+
+<ParamField path="color" type="int">
+  Background color
+</ParamField>
+
+<ParamField path="ortho" type="bool">
+  Whether to use orthonormal axes
+</ParamField>
+
+### svg_grid
+
+```cpp
+std::string svg_grid(double xmin, double xmax,
+                     double ymin, double ymax, int color);
+```
+
+Generates SVG grid lines.
+
+<ParamField path="xmin" type="double">
+  Minimum x coordinate
+</ParamField>
+
+<ParamField path="xmax" type="double">
+  Maximum x coordinate
+</ParamField>
+
+<ParamField path="ymin" type="double">
+  Minimum y coordinate
+</ParamField>
+
+<ParamField path="ymax" type="double">
+  Maximum y coordinate
+</ParamField>
+
+<ParamField path="color" type="int">
+  Grid color
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  SVG grid markup
+</ResponseField>
+
+## Maple Format
+
+The maple.h header provides compatibility functions for Maple-style operations.
+
+### Time Measurement
+
+```cpp
+struct cpureal_t {
+  double cpu;   // CPU time
+  double real;  // Real (wall-clock) time
+};
+
+cpureal_t clock_realtime();
+double realtime();
+```
+
+Functions for measuring execution time.
+
+<ResponseField name="cpu" type="double">
+  CPU time in seconds
+</ResponseField>
+
+<ResponseField name="real" type="double">
+  Wall-clock time in seconds
+</ResponseField>
+
+## TI-89 Format
+
+The ti89.h header provides TI-89 calculator compatibility functions for importing and exporting expressions.
+
+### ti2gen
+
+```cpp
+gen ti2gen(octet * ptr, GIAC_CONTEXT);
+```
+
+Converts TI-89 binary format to Giac expression.
+
+<ParamField path="ptr" type="octet *">
+  Pointer to TI-89 binary data
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Giac expression
+</ResponseField>
+
+### exact
+
+```cpp
+gen exact(const gen & g, GIAC_CONTEXT);
+```
+
+Converts floating-point values to exact representations.
+
+<ParamField path="g" type="gen">
+  Expression with floating-point values
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Expression with exact values (fractions, radicals, etc.)
+</ResponseField>
+
+## Utility Functions
+
+### translate_underscore
+
+```cpp
+std::string translate_underscore(const std::string & s);
+```
+
+Escapes special LaTeX characters (underscore, ampersand, braces).
+
+<ParamField path="s" type="std::string">
+  Input string
+</ParamField>
+
+<ResponseField name="return" type="std::string">
+  String with escaped characters
+</ResponseField>
+
+### greek2tex
+
+```cpp
+int greek2tex(const std::string & s, std::string & texs, bool mathmode);
+```
+
+Converts Greek letter names to LaTeX commands.
+
+<ParamField path="s" type="std::string">
+  Greek letter name (e.g., "alpha")
+</ParamField>
+
+<ParamField path="texs" type="std::string &">
+  Output LaTeX command (e.g., "\\alpha")
+</ParamField>
+
+<ParamField path="mathmode" type="bool">
+  Whether output is for math mode
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Status code
+</ResponseField>
+
+### arc_en_ciel
+
+```cpp
+void arc_en_ciel(int k, int & r, int & g, int & b);
+```
+
+Generates rainbow colors for visualization.
+
+<ParamField path="k" type="int">
+  Color index (reduced modulo 126)
+</ParamField>
+
+<ParamField path="r" type="int &">
+  Red component (0-255)
+</ParamField>
+
+<ParamField path="g" type="int &">
+  Green component (0-255)
+</ParamField>
+
+<ParamField path="b" type="int &">
+  Blue component (0-255)
+</ParamField>
+
+## See Also
+
+- [Plotting Functions](/api/utilities/plotting) - Generate plots for export
+- [Expression Manipulation](/api/algebra/symbolic) - Work with symbolic expressions

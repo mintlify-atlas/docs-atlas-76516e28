@@ -1,0 +1,411 @@
+---
+title: "gen Class"
+description: "Complete documentation of the Giac gen class for polymorphic algebraic objects"
+---
+
+## Overview
+
+The `gen` class is the fundamental type in Giac, representing polymorphic algebraic objects. It can hold integers, floating-point numbers, complex numbers, symbolic expressions, vectors, matrices, and more.
+
+Defined in: `src/giac/headers/gen.h`
+
+## Type System
+
+The gen class uses a type field to distinguish between different value types:
+
+```cpp
+class gen {
+public:
+  unsigned char type;      // Type identifier
+  signed char subtype;     // Subtype information
+  unsigned short reserved; // Used for 64-bit pointers
+  union {
+    int val;              // Immediate integer
+    double _DOUBLE_val;   // Immediate double (if DOUBLEVAL)
+    // ... pointer types for complex objects
+  };
+};
+```
+
+## Type Constants
+
+From `dispatch.h`:
+
+<ParamField path="_INT_" type="type">Integer type (immediate value)</ParamField>
+<ParamField path="_DOUBLE_" type="type">Double-precision floating point</ParamField>
+<ParamField path="_FLOAT_" type="type">Single-precision float</ParamField>
+<ParamField path="_ZINT" type="type">Arbitrary precision integer (GMP mpz_t)</ParamField>
+<ParamField path="_CPLX" type="type">Complex number</ParamField>
+<ParamField path="_REAL" type="type">Arbitrary precision real (MPFR)</ParamField>
+<ParamField path="_FRAC" type="type">Rational number (fraction)</ParamField>
+<ParamField path="_SYMB" type="type">Symbolic expression</ParamField>
+<ParamField path="_VECT" type="type">Vector or list</ParamField>
+<ParamField path="_IDNT" type="type">Identifier (variable name)</ParamField>
+<ParamField path="_POLY" type="type">Polynomial</ParamField>
+<ParamField path="_STRNG" type="type">String</ParamField>
+<ParamField path="_FUNC" type="type">Function pointer</ParamField>
+
+## Constructors
+
+### Default Constructor
+
+```cpp
+gen();
+```
+
+Creates a gen initialized to 0.
+
+### Integer Constructors
+
+```cpp
+gen(int i);
+gen(long i);
+gen(longlong i);
+gen(const mpz_t & m);
+```
+
+Create gen from various integer types.
+
+<CodeGroup>
+```cpp Example
+gen a(42);           // int
+gen b(1000000000L);  // long
+gen c("12345678901234567890", contextptr); // Large integer from string
+```
+</CodeGroup>
+
+### Floating-Point Constructors
+
+```cpp
+gen(double d);
+gen(const giac_float & f);
+```
+
+Create gen from floating-point values.
+
+<CodeGroup>
+```cpp Example
+gen x(3.14159);
+gen y(2.718281828);
+```
+</CodeGroup>
+
+### Complex Constructors
+
+```cpp
+gen(int a, int b);              // a + bi
+gen(double a, double b);        // a + bi
+gen(const gen & a, const gen & b); // a + bi
+gen(const std::complex<double> & c);
+```
+
+Create complex numbers.
+
+<CodeGroup>
+```cpp Example
+gen i(0, 1);           // i = sqrt(-1)
+gen z(3.0, 4.0);       // 3 + 4i
+gen w = gen(1, 2);     // 1 + 2i
+```
+</CodeGroup>
+
+### Vector Constructor
+
+```cpp
+gen(const vecteur & v, short int s = 0);
+```
+
+Create gen from a vector. The subtype `s` can specify special vector types.
+
+<CodeGroup>
+```cpp Example
+vecteur v = {gen(1), gen(2), gen(3)};
+gen vec(v);  // Vector [1, 2, 3]
+```
+</CodeGroup>
+
+### Symbolic Constructor
+
+```cpp
+gen(const symbolic & s);
+```
+
+Create gen from a symbolic expression.
+
+### String Constructor
+
+```cpp
+gen(const std::string & s, GIAC_CONTEXT);
+gen(const char * s, GIAC_CONTEXT);
+```
+
+Parse a string to create a gen.
+
+<CodeGroup>
+```cpp Example
+gen expr("x^2 + 2*x + 1", contextptr);
+gen val("3.14159", contextptr);
+```
+</CodeGroup>
+
+## Core Methods
+
+### Evaluation
+
+```cpp
+gen eval(int level, const context * contextptr) const;
+```
+
+Evaluate the expression to the specified depth level.
+
+<ParamField path="level" type="int">
+  Evaluation depth (typically `DEFAULT_EVAL_LEVEL`)
+</ParamField>
+<ParamField path="contextptr" type="const context *">
+  Evaluation context
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Evaluated result
+</ResponseField>
+
+<CodeGroup>
+```cpp Example
+gen x = gen("x", contextptr);
+gen expr = x * x + 2 * x + 1;
+gen result = expr.eval(DEFAULT_EVAL_LEVEL, contextptr);
+```
+</CodeGroup>
+
+### Floating-Point Evaluation
+
+```cpp
+gen evalf(int level, const context * contextptr) const;
+gen evalf_double(int level, const context * contextptr) const;
+```
+
+Evaluate to floating-point approximation.
+
+- `evalf()` - Returns arbitrary precision if available
+- `evalf_double()` - Forces double precision
+
+<CodeGroup>
+```cpp Example
+gen pi = gen("pi", contextptr);
+gen approx = pi.evalf(1, contextptr);  // 3.14159265359...
+```
+</CodeGroup>
+
+### Type Conversion
+
+```cpp
+int to_int() const;
+double to_double(const context * contextptr) const;
+```
+
+Convert gen to native C++ types.
+
+<CodeGroup>
+```cpp Example
+gen x(42);
+int n = x.to_int();        // 42
+
+gen y(3.14);
+double d = y.to_double(contextptr);  // 3.14
+```
+</CodeGroup>
+
+### Type Checking
+
+```cpp
+bool is_integer() const;
+bool is_cinteger() const;  // Complex integer
+bool is_real(GIAC_CONTEXT) const;
+bool is_constant() const;
+bool is_approx() const;
+```
+
+Check the type of a gen.
+
+<CodeGroup>
+```cpp Example
+gen x(42);
+if (x.is_integer()) {
+  // x is an integer
+}
+
+gen y(3.14);
+if (y.is_approx()) {
+  // y is approximate (floating-point)
+}
+```
+</CodeGroup>
+
+## Arithmetic Operators
+
+The gen class overloads standard C++ operators:
+
+```cpp
+gen operator + (const gen & a, const gen & b);
+gen operator - (const gen & a, const gen & b);
+gen operator - (const gen & a);  // Unary minus
+gen operator * (const gen & a, const gen & b);
+gen operator / (const gen & a, const gen & b);
+gen operator % (const gen & a, const gen & b);
+```
+
+<CodeGroup>
+```cpp Example
+gen a(5), b(3);
+gen sum = a + b;      // 8
+gen diff = a - b;     // 2
+gen prod = a * b;     // 15
+gen quot = a / b;     // 5/3 (rational)
+gen neg = -a;         // -5
+```
+</CodeGroup>
+
+### Compound Assignment
+
+```cpp
+gen & operator += (gen & a, const gen & b);
+gen & operator -= (gen & a, const gen & b);
+```
+
+## Comparison Operators
+
+```cpp
+bool operator == (const gen & a, const gen & b);
+bool operator != (const gen & a, const gen & b);
+bool operator > (const gen & a, const gen & b);
+bool operator < (const gen & a, const gen & b);
+```
+
+<CodeGroup>
+```cpp Example
+gen a(5), b(3);
+if (a > b) {
+  // 5 > 3 is true
+}
+```
+</CodeGroup>
+
+## Complex Number Operations
+
+```cpp
+gen conj(GIAC_CONTEXT) const;          // Complex conjugate
+gen re(GIAC_CONTEXT) const;            // Real part
+gen im(GIAC_CONTEXT) const;            // Imaginary part
+gen squarenorm(GIAC_CONTEXT) const;    // |z|^2
+```
+
+<CodeGroup>
+```cpp Example
+gen z(3.0, 4.0);  // 3 + 4i
+gen conj_z = z.conj(contextptr);  // 3 - 4i
+gen re_z = z.re(contextptr);      // 3
+gen im_z = z.im(contextptr);      // 4
+gen norm = z.squarenorm(contextptr); // 25
+```
+</CodeGroup>
+
+## Vector/Matrix Operations
+
+### Indexing
+
+```cpp
+gen operator [] (int i) const;
+gen operator [] (const gen & i) const;
+```
+
+Access vector/matrix elements (0-indexed).
+
+<CodeGroup>
+```cpp Example
+vecteur v = {gen(1), gen(2), gen(3)};
+gen vec(v);
+gen elem = vec[0];  // 1
+```
+</CodeGroup>
+
+### Function Application
+
+```cpp
+gen operator () (const gen & i, GIAC_CONTEXT) const;
+```
+
+Apply a function gen to arguments.
+
+## Advanced Methods
+
+### Normal Form
+
+```cpp
+gen inverse(GIAC_CONTEXT) const;
+```
+
+Compute the multiplicative inverse.
+
+### Printing
+
+```cpp
+std::string print(GIAC_CONTEXT) const;
+const char * dbgprint() const;
+```
+
+Convert gen to string representation.
+
+<CodeGroup>
+```cpp Example
+gen x("x^2 + 1", contextptr);
+std::string str = x.print(contextptr);
+std::cout << str << std::endl;  // "x^2+1"
+```
+</CodeGroup>
+
+## Memory Management
+
+The gen class uses reference counting for heap-allocated types:
+
+```cpp
+volatile ref_count_t & ref_count() const;
+```
+
+- Simple types (integers, doubles) are stored inline
+- Complex types use reference-counted pointers
+- Copy-on-write semantics for efficiency
+
+## Size and Dimensions
+
+```cpp
+bool is_vector_of_size(size_t n) const;
+int symb_size() const;
+```
+
+Check dimensions and size.
+
+## Helper Functions
+
+```cpp
+bool is_zero(const gen & a, GIAC_CONTEXT);
+bool is_one(const gen & a);
+bool is_minus_one(const gen & a);
+bool is_inf(const gen & e);
+bool is_undef(const gen & e);
+```
+
+Global helper functions for common checks.
+
+<CodeGroup>
+```cpp Example
+gen x(0);
+if (is_zero(x, contextptr)) {
+  // x is zero
+}
+```
+</CodeGroup>
+
+## See Also
+
+- [Context API](/api/context) - Evaluation context
+- [Evaluation functions](/api/evaluation) - eval(), evalf(), etc.

@@ -1,0 +1,730 @@
+---
+title: 'Sturm Sequences'
+description: 'Sturm sequence methods for root isolation, counting, and complex root finding'
+---
+
+## Overview
+
+The Sturm sequence module implements sophisticated algorithms for:
+- Counting real roots in intervals
+- Isolating real roots
+- Finding complex roots in rectangular regions
+- Root refinement using Newton's method
+- Computing Sturm sequences for polynomials
+
+These methods are particularly effective for polynomials with symbolic or exact coefficients.
+
+## Complex Sturm Sequences
+
+### csturm_seq
+
+<ParamField path="r0" type="modpoly&">
+  First polynomial (typically P)
+</ParamField>
+
+<ParamField path="r1" type="modpoly&">
+  Second polynomial (typically P')
+</ParamField>
+
+<ParamField path="listquo" type="vecteur&">
+  Output: list of quotients Q_k
+</ParamField>
+
+<ParamField path="coeffP" type="vecteur&">
+  Output: coefficients coeffP_k
+</ParamField>
+
+<ParamField path="coeffR" type="vecteur&">
+  Output: coefficients coeffR satisfying the recurrence relation
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  GCD of r0 and r1 (without content)
+</ResponseField>
+
+```cpp
+gen csturm_seq(modpoly & r0, modpoly & r1, vecteur & listquo, 
+               vecteur & coeffP, vecteur & coeffR, GIAC_CONTEXT);
+```
+
+Computes the Sturm sequence of two polynomials r0 and r1. Returns the GCD and computes quotients and coefficients such that:
+
+```
+coeffR * r_(k+2) = Q_k * r_(k+1) - coeffP_k * r_k
+```
+
+This forms the basis for counting sign changes and locating roots.
+
+### csturm_square
+
+<ParamField path="p" type="gen">
+  Polynomial (as symbolic expression)
+</ParamField>
+
+<ParamField path="a" type="gen">
+  Lower-left corner of rectangle (complex number)
+</ParamField>
+
+<ParamField path="b" type="gen">
+  Upper-right corner of rectangle (complex number)
+</ParamField>
+
+<ParamField path="pgcd" type="gen&">
+  Output: GCD if a factor is found
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Number of complex roots in rectangle, or -1 if factor found
+</ResponseField>
+
+```cpp
+int csturm_square(const gen & p, const gen & a, const gen & b, 
+                  gen& pgcd, GIAC_CONTEXT);
+```
+
+Counts the number of complex roots of polynomial p inside the rectangle defined by corners a and b. Returns -1 if a factor is discovered during computation.
+
+<CodeGroup>
+```cpp Example: Count roots in region
+// Count roots in rectangle [0,2] × [0,2i]
+gen a = 0;
+gen b = gen(2, 2); // 2+2i
+gen pgcd;
+int nroots = csturm_square(x*x*x - 1, a, b, pgcd, contextptr);
+```
+</CodeGroup>
+
+## Complex Root Finding
+
+### complex_roots
+
+<ParamField path="P" type="modpoly">
+  Polynomial with numeric coefficients in Q[i]
+</ParamField>
+
+<ParamField path="a0" type="gen">
+  Lower bound for real part
+</ParamField>
+
+<ParamField path="b0" type="gen">
+  Lower bound for imaginary part
+</ParamField>
+
+<ParamField path="a1" type="gen">
+  Upper bound for real part
+</ParamField>
+
+<ParamField path="b1" type="gen">
+  Upper bound for imaginary part
+</ParamField>
+
+<ParamField path="roots" type="vecteur&">
+  Output: vector of complex roots
+</ParamField>
+
+<ParamField path="pgcd" type="gen&">
+  Output: factor of P if found
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  False if a factor was found, true otherwise
+</ResponseField>
+
+```cpp
+bool complex_roots(const modpoly & P, const gen & a0, const gen & b0, 
+                   const gen & a1, const gen & b1, vecteur & roots, 
+                   gen & pgcd, double eps);
+```
+
+Finds all complex roots of P in the rectangle [a0,a1] × [b0,b1]i using complex Sturm sequences. Returns false if a factor is discovered.
+
+### complex_roots (high-level)
+
+<ParamField path="P" type="modpoly">
+  Polynomial with numeric coefficients
+</ParamField>
+
+<ParamField path="a0" type="gen">
+  Lower bound for real part
+</ParamField>
+
+<ParamField path="b0" type="gen">
+  Lower bound for imaginary part
+</ParamField>
+
+<ParamField path="a1" type="gen">
+  Upper bound for real part
+</ParamField>
+
+<ParamField path="b1" type="gen">
+  Upper bound for imaginary part
+</ParamField>
+
+<ParamField path="complexe" type="bool">
+  Whether to find complex roots
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ParamField path="use_proot" type="bool">
+  Whether to use proot algorithm as fallback
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of roots
+</ResponseField>
+
+```cpp
+vecteur complex_roots(const modpoly & P, const gen & a0, const gen & b0, 
+                      const gen & a1, const gen & b1, bool complexe, 
+                      double eps, bool use_proot);
+```
+
+High-level interface for finding roots at specified precision. Automatically handles rectangular search regions.
+
+### complexroot / realroot
+
+<ParamField path="g" type="gen">
+  Polynomial or expression
+</ParamField>
+
+<ParamField path="complexe" type="bool">
+  Whether to find complex roots (internal version)
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Roots of the polynomial
+</ResponseField>
+
+```cpp
+gen complexroot(const gen & g, bool complexe, GIAC_CONTEXT);
+gen _complexroot(const gen & g, GIAC_CONTEXT);
+gen _realroot(const gen & g, GIAC_CONTEXT);
+```
+
+Finds complex or real roots of polynomials using advanced root isolation methods.
+
+## Real Root Isolation
+
+### vas
+
+<ParamField path="P" type="modpoly">
+  Polynomial
+</ParamField>
+
+<ParamField path="a" type="gen">
+  Left endpoint of interval
+</ParamField>
+
+<ParamField path="b" type="gen">
+  Right endpoint of interval
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ParamField path="vasres" type="vecteur&">
+  Output: list of intervals or rational roots
+</ParamField>
+
+<ParamField path="with_mult" type="bool">
+  Whether to include multiplicities
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if successful
+</ResponseField>
+
+```cpp
+bool vas(const modpoly & P, const gen & a, const gen & b, double eps, 
+         vecteur & vasres, bool with_mult, GIAC_CONTEXT);
+```
+
+Isolates and finds real roots of P in interval [a,b] at precision eps. Returns intervals containing roots or exact rational roots.
+
+<Tip>
+The VAS (Vincent-Akritas-Strzeboński) algorithm is particularly efficient for polynomials with large degree or exact coefficients.
+</Tip>
+
+## Newton Refinement
+
+### newton_improve
+
+<ParamField path="P" type="vecteur">
+  Polynomial coefficients
+</ParamField>
+
+<ParamField path="P1" type="vecteur">
+  Derivative polynomial coefficients
+</ParamField>
+
+<ParamField path="Preal" type="bool">
+  Whether P has real coefficients
+</ParamField>
+
+<ParamField path="v" type="vecteur&">
+  Approximate roots to refine
+</ParamField>
+
+<ParamField path="vradius" type="vecteur&">
+  Output: radius of convergence for each root
+</ParamField>
+
+<ParamField path="i" type="int">
+  Index of root to refine
+</ParamField>
+
+<ParamField path="kmax" type="int">
+  Maximum Newton iterations
+</ParamField>
+
+<ParamField path="n" type="int">
+  Current precision in bits
+</ParamField>
+
+<ParamField path="epsn" type="int">
+  Target precision in bits
+</ParamField>
+
+<ParamField path="epsg2surdeg2" type="gen">
+  eps^2 / degree(P)^2 as a gen
+</ParamField>
+
+<ParamField path="epsg" type="gen">
+  Target precision as gen
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if refinement successful
+</ResponseField>
+
+```cpp
+bool newton_improve(const vecteur & P, const vecteur & P1, bool Preal, 
+                    vecteur & v, vecteur & vradius, int i, int kmax, 
+                    int n, int epsn, const gen & epsg2surdeg2, 
+                    const gen & epsg);
+```
+
+Refines approximate root v[i] using Newton's method to achieve target precision. Updates vradius[i] with certified error bound.
+
+### newton_complex_1root
+
+<ParamField path="P" type="modpoly">
+  Polynomial
+</ParamField>
+
+<ParamField path="a0" type="gen">
+  Lower bound for real part
+</ParamField>
+
+<ParamField path="b0" type="gen">
+  Lower bound for imaginary part
+</ParamField>
+
+<ParamField path="a1" type="gen">
+  Upper bound for real part
+</ParamField>
+
+<ParamField path="b1" type="gen">
+  Upper bound for imaginary part
+</ParamField>
+
+<ParamField path="complexroots" type="vecteur&">
+  Output: found root (appended to vector)
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if a root was found
+</ResponseField>
+
+```cpp
+bool newton_complex_1root(const modpoly & P, const gen & a0, const gen & b0, 
+                          const gen & a1, const gen & b1, 
+                          vecteur & complexroots, double eps);
+```
+
+Finds one complex root inside the rectangle using Newton's method starting from the center.
+
+## Polynomial Root Algorithms
+
+### aberth
+
+<ParamField path="P0" type="vecteur">
+  Polynomial coefficients
+</ParamField>
+
+<ParamField path="R" type="vecteur&">
+  Input/output: approximate roots
+</ParamField>
+
+<ParamField path="rayon" type="vecteur&">
+  Output: error radii for each root
+</ParamField>
+
+<ParamField path="N" type="int">
+  Degree of polynomial
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ParamField path="isolate" type="int">
+  Isolation mode flag
+</ParamField>
+
+<ParamField path="do_exact" type="bool">
+  Whether to compute exact roots when possible
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if successful
+</ResponseField>
+
+```cpp
+bool aberth(const vecteur & P0, vecteur & R, vecteur & rayon, int N, 
+            double eps, int isolate, bool do_exact, GIAC_CONTEXT);
+```
+
+Aberth's method for simultaneous approximation of all polynomial roots. Highly efficient for well-conditioned polynomials.
+
+<Note>
+The Aberth method simultaneously refines all roots, taking into account their mutual interactions. This often converges faster than individual Newton iterations.
+</Note>
+
+### mps_solve
+
+<ParamField path="P" type="vecteur">
+  Polynomial coefficients
+</ParamField>
+
+<ParamField path="R" type="vecteur&">
+  Output: approximate roots
+</ParamField>
+
+<ParamField path="rayon" type="vecteur&">
+  Output: error radii
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Target precision
+</ParamField>
+
+<ParamField path="isolate" type="int">
+  Isolation mode
+</ParamField>
+
+<ParamField path="secular" type="bool">
+  Whether to use secular equation algorithm
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Status code
+</ResponseField>
+
+```cpp
+int mps_solve(const vecteur & P, vecteur & R, vecteur & rayon, double eps, 
+              int isolate, bool secular, GIAC_CONTEXT);
+```
+
+Multiprecision polynomial solver using MPS (Multiprecision Polynomial Solver) algorithms.
+
+## Rational Root Finding
+
+### crationalroot / rationalroot
+
+<ParamField path="p" type="polynome&">
+  Polynomial
+</ParamField>
+
+<ParamField path="complexe" type="bool">
+  Whether to find complex rational roots (Gaussian rationals)
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of rational (or Gaussian rational) roots
+</ResponseField>
+
+```cpp
+vecteur crationalroot(polynome & p, bool complexe);
+gen _crationalroot(const gen & g, GIAC_CONTEXT);
+gen _rationalroot(const gen & g, GIAC_CONTEXT);
+```
+
+Finds all rational roots (or Gaussian rational roots for complex version) using the rational root theorem.
+
+## Coordinate Transformations
+
+### change_scale
+
+<ParamField path="p" type="modpoly&">
+  Polynomial to transform (modified in place)
+</ParamField>
+
+<ParamField path="l" type="gen">
+  Scale factor
+</ParamField>
+
+<ParamField path="lb" type="longlong">
+  Power of 2 scale (if not 1 shifted left 31, use l=2^lb)
+</ParamField>
+
+```cpp
+void change_scale(modpoly & p, const gen & l, longlong lb=1<<31);
+void back_change_scale(modpoly & p, const gen & l, longlong lb=1<<31);
+```
+
+Transforms P(x) → P(l·x) for change_scale, and the inverse for back_change_scale. Useful for normalizing root search regions.
+
+### linear_changevar
+
+<ParamField path="p" type="modpoly">
+  Polynomial
+</ParamField>
+
+<ParamField path="a" type="gen">
+  Linear coefficient
+</ParamField>
+
+<ParamField path="b" type="gen">
+  Constant term
+</ParamField>
+
+<ResponseField name="return" type="modpoly">
+  Transformed polynomial
+</ResponseField>
+
+```cpp
+modpoly linear_changevar(const modpoly & p, const gen & a, const gen & b);
+modpoly inv_linear_changevar(const modpoly & p, const gen & a, const gen & b);
+```
+
+Transforms P(x) → P(a·x + b) and the inverse transformation.
+
+### ab2a0b0a1b1
+
+<ParamField path="a" type="gen">
+  First corner of rectangle (complex)
+</ParamField>
+
+<ParamField path="b" type="gen">
+  Opposite corner of rectangle (complex)
+</ParamField>
+
+<ParamField path="a0" type="gen&">
+  Output: minimum real part
+</ParamField>
+
+<ParamField path="b0" type="gen&">
+  Output: minimum imaginary part
+</ParamField>
+
+<ParamField path="a1" type="gen&">
+  Output: maximum real part
+</ParamField>
+
+<ParamField path="b1" type="gen&">
+  Output: maximum imaginary part
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+```cpp
+void ab2a0b0a1b1(const gen & a, const gen & b, gen & a0, gen & b0, 
+                 gen & a1, gen & b1, GIAC_CONTEXT);
+```
+
+Extracts rectangle boundaries from two complex corner points.
+
+## Utility Functions
+
+### horner_minmax
+
+<ParamField path="P" type="vecteur">
+  Polynomial coefficients
+</ParamField>
+
+<ParamField path="Preal" type="bool">
+  Whether P has real coefficients
+</ParamField>
+
+<ParamField path="r" type="gen">
+  Evaluation point
+</ParamField>
+
+<ParamField path="eps" type="gen">
+  Perturbation radius
+</ParamField>
+
+<ParamField path="Prmin" type="gen&">
+  Output: minimum value of P in [r-eps, r+eps]
+</ParamField>
+
+<ParamField path="Prmax" type="gen&">
+  Output: maximum value of P in [r-eps, r+eps]
+</ParamField>
+
+```cpp
+void horner_minmax(const vecteur & P, bool Preal, const gen & r, 
+                   const gen & eps, gen & Prmin, gen & Prmax);
+```
+
+Evaluates P at r±eps using Horner's method and returns interval bounds.
+
+### round2
+
+<ParamField path="x" type="gen&">
+  Value to round (modified in place)
+</ParamField>
+
+<ParamField path="n" type="int">
+  Number of bits precision
+</ParamField>
+
+```cpp
+void round2(gen & x, int n);
+void in_round2(gen & x, const gen & deuxn, int n);
+```
+
+Rounds x to n bits of precision. Useful for controlling numerical stability.
+
+### keep_in_rectangle
+
+<ParamField path="croots" type="vecteur">
+  Complex roots to filter
+</ParamField>
+
+<ParamField path="A0" type="gen">
+  Minimum real part
+</ParamField>
+
+<ParamField path="B0" type="gen">
+  Minimum imaginary part
+</ParamField>
+
+<ParamField path="A1" type="gen">
+  Maximum real part
+</ParamField>
+
+<ParamField path="B1" type="gen">
+  Maximum imaginary part
+</ParamField>
+
+<ParamField path="embed" type="bool">
+  Whether to embed in surrounding space
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Filtered roots within rectangle
+</ResponseField>
+
+```cpp
+vecteur keep_in_rectangle(const vecteur & croots, const gen A0, const gen & B0,
+                          const gen & A1, const gen & B1, bool embed, 
+                          GIAC_CONTEXT);
+```
+
+Filters a list of roots to keep only those within the specified rectangle.
+
+### symb2poly_num
+
+<ParamField path="g" type="gen">
+  Symbolic expression
+</ParamField>
+
+<ParamField path="contextptr" type="GIAC_CONTEXT">
+  Context pointer
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Numeric polynomial coefficients
+</ResponseField>
+
+```cpp
+vecteur symb2poly_num(const gen & g, GIAC_CONTEXT);
+```
+
+Converts symbolic polynomial to numeric coefficient vector.
+
+## Algorithm Overview
+
+<AccordionGroup>
+  <Accordion title="Sturm Sequences">
+    Classical Sturm sequences count real roots in an interval by tracking sign changes. Complex Sturm sequences extend this to rectangular regions in the complex plane.
+    
+    The algorithm computes a sequence P₀, P₁, P₂, ... where P₀ is the polynomial, P₁ is its derivative, and subsequent terms follow the Euclidean algorithm. Sign changes at interval endpoints indicate root presence.
+  </Accordion>
+  
+  <Accordion title="VAS Algorithm">
+    The Vincent-Akritas-Strzeboński algorithm efficiently isolates real roots using continued fractions and Descartes' rule of signs. It's particularly effective for high-degree polynomials.
+    
+    The method recursively subdivides intervals and applies transformations to isolate roots to arbitrary precision.
+  </Accordion>
+  
+  <Accordion title="Aberth's Method">
+    Aberth's method simultaneously approximates all roots of a polynomial by solving:
+    
+    ```
+    z_i^(k+1) = z_i^(k) - P(z_i^(k))/P'(z_i^(k)) / (1 - Σ_{j≠i} 1/(z_i^(k) - z_j^(k)))
+    ```
+    
+    This accounts for interactions between nearby roots and often converges cubically.
+  </Accordion>
+  
+  <Accordion title="Newton Refinement">
+    Once roots are isolated, Newton's method provides rapid local convergence:
+    
+    ```
+    z^(k+1) = z^(k) - P(z^(k))/P'(z^(k))
+    ```
+    
+    With multiprecision arithmetic, this achieves arbitrary accuracy.
+  </Accordion>
+</AccordionGroup>
+
+## Related Functions
+
+- [Equation Solving](./equation-solving) - General equation solving functions
+- Polynomial arithmetic - See polynomial module
+- Root finding - See numeric module

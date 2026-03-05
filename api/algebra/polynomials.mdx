@@ -1,0 +1,366 @@
+---
+title: Polynomial API
+description: Core polynomial classes and operations in Giac
+---
+
+## Overview
+
+The Giac polynomial API provides a powerful tensor-based representation for multivariate polynomials with various coefficient types. The core class is `tensor<T>`, which represents polynomials as sorted lists of monomials.
+
+## Core Classes
+
+### tensor\<T>
+
+The main polynomial class template that represents a multivariate polynomial.
+
+```cpp poly.h:35-221
+template <class T> class tensor {
+public:
+    int dim;  // number of variables
+    std::vector< monomial<T> > coord;  // sorted list of monomials
+    bool (* is_strictly_greater)(const index_m &, const index_m &);
+    
+    // Constructors
+    tensor();  // default constructor
+    explicit tensor(int d);  // dimension d
+    tensor(const T & v, int d);  // constant polynomial
+    tensor(const monomial<T> & v);  // single monomial
+};
+```
+
+#### Key Members
+
+<ParamField path="dim" type="int">
+  Number of variables (dimension of the polynomial)
+</ParamField>
+
+<ParamField path="coord" type="std::vector<monomial<T>>">
+  Sorted list of monomials representing the polynomial terms
+</ParamField>
+
+<ParamField path="is_strictly_greater" type="function pointer">
+  Comparison function for monomial ordering (lexicographic by default)
+</ParamField>
+
+### Tref_tensor\<T>
+
+Reference-counted wrapper for tensor objects.
+
+```cpp poly.h:222-228
+template <class T> class Tref_tensor {
+public:
+    ref_count_t ref_count;
+    tensor<T> t;
+    Tref_tensor<T>(const tensor<T> & P): ref_count(1), t(P) {}
+    Tref_tensor<T>(int dim): ref_count(1), t(dim) {}
+};
+```
+
+## Degree Operations
+
+### degree()
+
+```cpp poly.h:103
+int degree(int n) const;
+```
+
+Returns the degree of the polynomial with respect to variable `n`.
+
+```cpp poly.h:105
+index_t degree() const;
+```
+
+Returns a vector containing the degrees with respect to each variable.
+
+### total_degree()
+
+```cpp poly.h:106
+int total_degree() const;
+```
+
+Returns the total degree (sum of all variable degrees) of the polynomial.
+
+### partial_degree()
+
+```cpp poly.h:107
+int partial_degree(int nvars) const;
+```
+
+Returns the total degree with respect to the first `nvars` variables.
+
+### valuation()
+
+```cpp poly.h:104
+int valuation(int n) const;
+```
+
+Returns the minimum degree of variable `n` across all monomials.
+
+## Arithmetic Operations
+
+### Addition
+
+```cpp poly.h:123
+void TAdd(const tensor<T> &other, tensor<T> & result) const;
+```
+
+Computes `result = this + other`. Merges sorted monomial lists efficiently.
+
+<CodeGroup>
+```cpp Example
+tensor<gen> p1(2), p2(2), result(2);
+// ... initialize p1 and p2 ...
+p1.TAdd(p2, result);
+```
+</CodeGroup>
+
+### Subtraction
+
+```cpp poly.h:125
+void TSub(const tensor<T> &other, tensor<T> & result) const;
+```
+
+Computes `result = this - other`.
+
+### Multiplication
+
+```cpp poly.h:128
+tensor<T> & operator *= (const T & fact);
+```
+
+Multiplies the polynomial by a scalar coefficient.
+
+### Division and Remainder
+
+```cpp poly.h:134
+bool TDivRem(const tensor<T> & other, tensor<T> & quo, tensor<T> & rem, 
+             bool allowrational = true) const;
+```
+
+Divides `this` by `other`, computing quotient and remainder such that `this = quo * other + rem`.
+
+<ParamField path="other" type="const tensor<T> &">
+  The divisor polynomial
+</ParamField>
+
+<ParamField path="quo" type="tensor<T> &">
+  Output: quotient
+</ParamField>
+
+<ParamField path="rem" type="tensor<T> &">
+  Output: remainder
+</ParamField>
+
+<ParamField path="allowrational" type="bool" default="true">
+  Whether to allow rational coefficients in the result
+</ParamField>
+
+### Exact Quotient
+
+```cpp poly.h:137
+bool Texactquotient(const tensor<T> & other, tensor<T> & quo, 
+                    bool allowrational = false) const;
+```
+
+Computes exact quotient if `this` is exactly divisible by `other`. Returns `false` if remainder is non-zero.
+
+### Pseudo Division
+
+```cpp poly.h:138
+bool TPseudoDivRem(const tensor<T> & other, tensor<T> & quo, 
+                   tensor<T> & rem, tensor<T> & a) const;
+```
+
+Computes pseudo-division: `a * this = quo * other + rem`, where `a` is chosen to avoid division.
+
+## Evaluation
+
+### Horner Evaluation
+
+```cpp poly.h:140
+tensor<T> operator () (const T & x0) const;
+```
+
+Evaluates the polynomial using Horner's scheme. For a univariate polynomial, substitutes `x0` for the main variable.
+
+```cpp poly.h:142
+T constant_term() const;
+```
+
+Returns the constant term of the polynomial.
+
+## Polynomial Transformations
+
+### shift()
+
+```cpp poly.h:119-121
+tensor<T> shift(const index_m & ishift, const T & fois) const;
+tensor<T> shift(const T & fois, const index_m & ishift) const;
+tensor<T> shift(const index_m & ishift) const;
+```
+
+Shifts monomial degrees and optionally multiplies by a coefficient.
+
+### Degree Manipulation
+
+```cpp poly.h:113-115
+tensor<T> multiplydegrees(int d) const;  // multiply degrees by d
+tensor<T> dividedegrees(int d) const;    // divide main degree by d  
+tensor<T> dividealldegrees(int d) const; // divide all degrees by d
+```
+
+### homogeneize()
+
+```cpp poly.h:116
+tensor<T> homogeneize() const;
+```
+
+Converts the polynomial to homogeneous form by adding an extra variable.
+
+### reverse()
+
+```cpp poly.h:108
+void reverse();
+```
+
+Reverses the variable ordering.
+
+### reorder()
+
+```cpp poly.h:117
+void reorder(const std::vector<int> & permutation);
+```
+
+Reorders variables according to the given permutation.
+
+## Calculus Operations
+
+### derivative()
+
+```cpp poly.h:144
+tensor<T> derivative() const;
+```
+
+Computes the derivative with respect to the main variable.
+
+### integrate()
+
+```cpp poly.h:145
+tensor<T> integrate() const;
+```
+
+Computes the integral with respect to the main variable.
+
+## Coefficient Extraction
+
+### Tcoeffs()
+
+```cpp poly.h:110-111
+void Tcoeffs(std::vector< tensor<T> > & v) const;
+std::vector< tensor<T> > Tcoeffs() const;
+```
+
+Extracts coefficients with respect to the main variable, returning them as polynomials in the remaining variables.
+
+### coeff()
+
+```cpp poly.h:112
+tensor<T> coeff(int deg) const;
+```
+
+Returns the coefficient of degree `deg` in the main variable.
+
+## Truncation and Projection
+
+### untrunc1() / trunc1()
+
+```cpp poly.h:153-157
+tensor<T> untrunc1(int j=0) const;  // add variable
+void untruncn(int j=0);              // add variable in-place
+tensor<T> trunc1() const;            // remove first variable
+```
+
+Add or remove variables from the polynomial representation.
+
+### Degree Truncation
+
+```cpp poly.h:211-220
+tensor<T> total_degree_truncate(int n) const;
+void high_order_degree_truncate(int n);
+```
+
+Removes terms above specified degree thresholds.
+
+## Utility Functions
+
+### norm()
+
+```cpp poly.h:143
+T norm() const;
+```
+
+Returns the maximum absolute value of coefficients.
+
+### gcddeg()
+
+```cpp poly.h:173-174
+int gcddeg(int k) const;
+index_t gcddeg() const;
+```
+
+Computes the GCD of all degrees in variable `k`, or all variables.
+
+### Tcontent() / Tppz()
+
+```cpp poly.h:1408-1418
+template<class T> T Tcontent(const tensor<T> & p);
+template<class T> T Tppz(tensor<T> & p, bool divide=true);
+```
+
+Extracts the content (GCD of coefficients) and primitive part.
+
+## Conversion Functions
+
+### convert()
+
+```cpp poly.h:233-272
+template<class T, class U>
+void convert(const tensor<T> & p, const index_t & deg, 
+             std::vector< T_unsigned<T,U> > & v);
+```
+
+Converts between tensor and hash-based representations for efficient operations.
+
+## Power Operations
+
+```cpp poly.h:800-834
+template <class T>
+tensor<T> Tpow(const tensor<T> & x, int n);
+```
+
+Computes `x^n` efficiently for non-negative integer `n`.
+
+## Comparison and Testing
+
+```cpp poly.h:295-297
+template <class T>
+bool operator == (const tensor<T> & p, const tensor<T> & q);
+```
+
+```cpp poly.h:1421-1433
+template<class T> bool Tis_one(const tensor<T> &p);
+template<class T> bool Tis_constant(const tensor<T> & p);
+```
+
+Test for equality, unity, or constant polynomials.
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Factorization" icon="sitemap" href="/api/algebra/factorization">
+    Polynomial factorization algorithms
+  </Card>
+  <Card title="Algebraic Extensions" icon="calculator" href="/api/algebra/algebraic-extensions">
+    Polynomials over algebraic extensions
+  </Card>
+</CardGroup>

@@ -1,0 +1,648 @@
+---
+title: WebAssembly Integration
+description: Use Giac computer algebra system in web browsers with WebAssembly and Emscripten
+icon: globe
+---
+
+Giac can be compiled to WebAssembly using Emscripten, enabling powerful computer algebra capabilities directly in web browsers without any server-side computation. This guide covers building and integrating the WebAssembly version.
+
+## Overview
+
+The WebAssembly build provides:
+
+- **Client-side computation**: All calculations run in the browser
+- **No server required**: Fully standalone mathematical engine
+- **Cross-platform**: Works on any modern browser
+- **Full Giac functionality**: Access to complete CAS capabilities
+- **Interactive interfaces**: Includes ready-to-use HTML interfaces
+
+## Prerequisites
+
+- **Emscripten SDK** (version 4.0.7 recommended)
+- **CMake** 3.10+
+- **Python** 2.7 or 3.x
+- **Node.js** (for testing)
+- **GMP and MPFR** compiled for WebAssembly
+
+<Warning>
+Emscripten versions other than 4.0.7 may not work correctly and could cause issues with specific Giac commands.
+</Warning>
+
+## Building with Emscripten
+
+### 1. Download and Install Emscripten
+
+```bash
+# Download Emscripten SDK
+../gradlew downloadEmsdk
+
+# Install specific version
+export EMSCRIPTEN_VERSION=tag-4.0.7
+../gradlew installEmsdk
+
+# Activate Emscripten
+../gradlew activateEmsdk
+```
+
+<Note>
+The installation process may take a while as it compiles Clang from source. You may need CMake and other build tools installed.
+</Note>
+
+### 2. Build WebAssembly Module
+
+```bash
+# Clean and build
+EMSCRIPTEN_VERSION=tag-4.0.7 ../gradlew clean createGiacWasmJs
+```
+
+This will:
+1. Compile all Giac C++ sources to LLVM bytecode
+2. Link with WebAssembly-compiled GMP and MPFR
+3. Generate `giacggb.js` and `giacggb.wasm` files
+
+### Build Configuration
+
+The build uses these Emscripten settings:
+
+```javascript
+const emscriptenFlags = [
+  '-O2',                          // Optimization level
+  '-s', 'WASM=1',                 // Enable WebAssembly
+  '-s', 'ALLOW_MEMORY_GROWTH=1',  // Dynamic memory
+  '-s', 'EXPORTED_FUNCTIONS=["_caseval"]',
+  '-s', 'EXPORTED_RUNTIME_METHODS=["cwrap"]',
+  '--pre-js', 'pre.js',           // Initialization code
+  '--post-js', 'post.js'          // Finalization code
+];
+```
+
+## Quick Start: Using Prebuilt WebAssembly
+
+The repository includes ready-to-use HTML interfaces in `src/giac.js/`:
+
+### Basic Interface (ggb.html)
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Giac WebAssembly</title>
+  <style>
+    .emscripten { 
+      padding-right: 0; 
+      margin-left: auto; 
+      margin-right: auto; 
+      display: block; 
+    }
+    textarea.emscripten { 
+      font-family: monospace; 
+      width: 80%; 
+    }
+  </style>
+</head>
+<body>
+  <h1>Giac Computer Algebra System</h1>
+  
+  <form onsubmit="event.preventDefault(); evaluate();">
+    Input: <input type="text" id="entree" value="factor(x^4-1)">
+    <input type="submit" value="Go!">
+  </form>
+  
+  <div id="status">Downloading...</div>
+  <progress id="progress" value="0" max="100"></progress>
+  <textarea id="output" rows="8" readonly></textarea>
+  
+  <script>
+    var Module = {
+      preRun: [],
+      postRun: [],
+      print: function(text) {
+        const element = document.getElementById('output');
+        element.value += text + "\n";
+        element.scrollTop = element.scrollHeight;
+      },
+      setStatus: function(text) {
+        document.getElementById('status').textContent = text;
+      }
+    };
+    
+    function evaluate() {
+      const input = document.getElementById('entree').value;
+      const caseval = Module.cwrap('caseval', 'string', ['string']);
+      Module.print(input + '\n  ' + caseval(input));
+    }
+  </script>
+  
+  <script src="giacggb.js"></script>
+</body>
+</html>
+```
+
+## JavaScript API
+
+### Initialization
+
+The WebAssembly module loads asynchronously:
+
+```javascript
+var Module = {
+  preRun: [],
+  postRun: [],
+  
+  // Called when module is ready
+  onRuntimeInitialized: function() {
+    console.log('Giac WebAssembly loaded');
+    caseval = Module.cwrap('caseval', 'string', ['string']);
+  },
+  
+  // Output handler
+  print: function(text) {
+    console.log(text);
+  },
+  
+  // Error handler
+  printErr: function(text) {
+    console.error(text);
+  },
+  
+  // Loading status
+  setStatus: function(text) {
+    console.log('Status:', text);
+  },
+  
+  // Track dependencies
+  monitorRunDependencies: function(left) {
+    console.log('Dependencies remaining:', left);
+  }
+};
+```
+
+### Evaluation Function
+
+The main function for evaluating expressions:
+
+```javascript
+// Wrap the C function
+const caseval = Module.cwrap('caseval', 'string', ['string']);
+
+// Evaluate expressions
+const result1 = caseval('factor(x^4-1)');
+console.log(result1);  // (x-1)*(x+1)*(x^2+1)
+
+const result2 = caseval('solve(x^2-3*x+2=0)');
+console.log(result2);  // [1,2]
+
+const result3 = caseval('int(sin(x))');
+console.log(result3);  // -cos(x)
+```
+
+## Complete Examples
+
+### Interactive Calculator
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Giac Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    #input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      font-family: monospace;
+    }
+    
+    #output {
+      width: 100%;
+      min-height: 200px;
+      padding: 10px;
+      font-family: monospace;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      margin-top: 10px;
+    }
+    
+    .example {
+      display: inline-block;
+      margin: 5px;
+      padding: 5px 10px;
+      background: #007bff;
+      color: white;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    .example:hover {
+      background: #0056b3;
+    }
+    
+    #status {
+      margin: 10px 0;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Giac Computer Algebra System</h1>
+  
+  <div id="status">Loading...</div>
+  
+  <h2>Examples:</h2>
+  <div id="examples">
+    <span class="example" onclick="setInput('factor(x^4-1)')">Factor</span>
+    <span class="example" onclick="setInput('simplify(sin(3x)/sin(x))')">Simplify</span>
+    <span class="example" onclick="setInput('solve(x^2-3*x+2=0)')">Solve</span>
+    <span class="example" onclick="setInput('int(1/(x^4-1))')">Integrate</span>
+    <span class="example" onclick="setInput('limit(sin(x)/x,x=0)')">Limit</span>
+    <span class="example" onclick="setInput('series(sin(x),x=0,5)')">Series</span>
+    <span class="example" onclick="setInput('A:=[[1,2],[3,4]]; eigenvalues(A)')">Matrix</span>
+  </div>
+  
+  <h2>Input:</h2>
+  <input type="text" id="input" placeholder="Enter expression..." 
+         onkeypress="if(event.key==='Enter') evaluate()">
+  <button onclick="evaluate()">Evaluate</button>
+  <button onclick="clearOutput()">Clear</button>
+  
+  <h2>Output:</h2>
+  <pre id="output"></pre>
+  
+  <script>
+    let caseval;
+    let lineNumber = 1;
+    
+    var Module = {
+      onRuntimeInitialized: function() {
+        caseval = Module.cwrap('caseval', 'string', ['string']);
+        document.getElementById('status').textContent = 'Ready!';
+        document.getElementById('status').style.color = 'green';
+      },
+      
+      setStatus: function(text) {
+        document.getElementById('status').textContent = text;
+      }
+    };
+    
+    function setInput(expr) {
+      document.getElementById('input').value = expr;
+    }
+    
+    function evaluate() {
+      if (!caseval) {
+        alert('Giac is still loading, please wait...');
+        return;
+      }
+      
+      const input = document.getElementById('input').value.trim();
+      if (!input) return;
+      
+      const output = document.getElementById('output');
+      
+      try {
+        const result = caseval(input);
+        output.textContent += `${lineNumber}>> ${input}\n`;
+        output.textContent += `${lineNumber}<< ${result}\n\n`;
+        lineNumber++;
+        
+        // Scroll to bottom
+        output.scrollTop = output.scrollHeight;
+        
+        // Clear input
+        document.getElementById('input').value = '';
+      } catch (error) {
+        output.textContent += `Error: ${error}\n\n`;
+      }
+    }
+    
+    function clearOutput() {
+      document.getElementById('output').textContent = '';
+      lineNumber = 1;
+    }
+  </script>
+  
+  <script src="giacggb.js"></script>
+</body>
+</html>
+```
+
+### Using with Modern JavaScript
+
+```javascript
+class GiacCalculator {
+  constructor() {
+    this.ready = false;
+    this.caseval = null;
+    
+    // Setup module
+    window.Module = {
+      onRuntimeInitialized: () => {
+        this.caseval = Module.cwrap('caseval', 'string', ['string']);
+        this.ready = true;
+        this.onReady();
+      }
+    };
+    
+    // Load script
+    const script = document.createElement('script');
+    script.src = 'giacggb.js';
+    document.head.appendChild(script);
+  }
+  
+  onReady() {
+    console.log('Giac is ready!');
+  }
+  
+  async evaluate(expression) {
+    if (!this.ready) {
+      throw new Error('Giac is not ready yet');
+    }
+    
+    return this.caseval(expression);
+  }
+  
+  async evaluateBatch(expressions) {
+    const results = [];
+    for (const expr of expressions) {
+      results.push(await this.evaluate(expr));
+    }
+    return results;
+  }
+}
+
+// Usage
+const giac = new GiacCalculator();
+
+giac.onReady = async () => {
+  console.log('Giac loaded!');
+  
+  const result = await giac.evaluate('factor(x^4-1)');
+  console.log(result);
+  
+  const batch = await giac.evaluateBatch([
+    'solve(x^2-1=0)',
+    'int(sin(x))',
+    'limit(sin(x)/x,x=0)'
+  ]);
+  console.log(batch);
+};
+```
+
+### React Integration
+
+```jsx
+import React, { useState, useEffect, useRef } from 'react';
+
+function GiacCalculator() {
+  const [ready, setReady] = useState(false);
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState([]);
+  const casevalRef = useRef(null);
+  
+  useEffect(() => {
+    // Setup Emscripten module
+    window.Module = {
+      onRuntimeInitialized: () => {
+        casevalRef.current = window.Module.cwrap(
+          'caseval', 'string', ['string']
+        );
+        setReady(true);
+      }
+    };
+    
+    // Load WebAssembly
+    const script = document.createElement('script');
+    script.src = '/giacggb.js';
+    document.head.appendChild(script);
+    
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+  
+  const evaluate = () => {
+    if (!ready || !input.trim()) return;
+    
+    try {
+      const result = casevalRef.current(input);
+      setOutput(prev => [
+        ...prev,
+        { input, result }
+      ]);
+      setInput('');
+    } catch (error) {
+      setOutput(prev => [
+        ...prev,
+        { input, result: `Error: ${error}` }
+      ]);
+    }
+  };
+  
+  return (
+    <div className="giac-calculator">
+      <h1>Giac Calculator</h1>
+      
+      {!ready && <p>Loading WebAssembly...</p>}
+      
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && evaluate()}
+          placeholder="Enter expression..."
+          disabled={!ready}
+        />
+        <button onClick={evaluate} disabled={!ready}>
+          Evaluate
+        </button>
+      </div>
+      
+      <div className="output">
+        {output.map((item, idx) => (
+          <div key={idx}>
+            <div><strong>{idx + 1}&gt;&gt;</strong> {item.input}</div>
+            <div><strong>{idx + 1}&lt;&lt;</strong> {item.result}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default GiacCalculator;
+```
+
+## Performance Optimization
+
+### Memory Management
+
+```javascript
+// Allow memory to grow dynamically
+var Module = {
+  TOTAL_MEMORY: 256 * 1024 * 1024,  // Initial: 256MB
+  ALLOW_MEMORY_GROWTH: true          // Can grow as needed
+};
+```
+
+### Caching Results
+
+```javascript
+class CachedGiac {
+  constructor() {
+    this.cache = new Map();
+    this.caseval = null;
+  }
+  
+  evaluate(expression) {
+    // Check cache
+    if (this.cache.has(expression)) {
+      return this.cache.get(expression);
+    }
+    
+    // Evaluate
+    const result = this.caseval(expression);
+    
+    // Store in cache
+    this.cache.set(expression, result);
+    
+    return result;
+  }
+  
+  clearCache() {
+    this.cache.clear();
+  }
+}
+```
+
+### Web Workers
+
+Run Giac in a Web Worker to avoid blocking the main thread:
+
+```javascript
+// giac-worker.js
+importScripts('giacggb.js');
+
+let caseval;
+
+Module = {
+  onRuntimeInitialized: function() {
+    caseval = Module.cwrap('caseval', 'string', ['string']);
+    postMessage({ type: 'ready' });
+  }
+};
+
+onmessage = function(e) {
+  if (e.data.type === 'evaluate') {
+    try {
+      const result = caseval(e.data.expression);
+      postMessage({ type: 'result', result });
+    } catch (error) {
+      postMessage({ type: 'error', error: error.message });
+    }
+  }
+};
+
+// main.js
+const worker = new Worker('giac-worker.js');
+
+worker.onmessage = function(e) {
+  if (e.data.type === 'ready') {
+    console.log('Giac worker ready');
+  } else if (e.data.type === 'result') {
+    console.log('Result:', e.data.result);
+  }
+};
+
+worker.postMessage({
+  type: 'evaluate',
+  expression: 'factor(x^4-1)'
+});
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="WebAssembly module fails to load">
+    **Possible causes:**
+    - CORS issues: Serve files from a web server, not `file://`
+    - Wrong MIME type: Ensure `.wasm` files are served as `application/wasm`
+    - Large file size: The `.wasm` file is several MB; wait for complete download
+    
+    **Solution:**
+    Use a local development server:
+    ```bash
+    python -m http.server 8000
+    # or
+    npx serve .
+    ```
+  </Accordion>
+
+  <Accordion title="Compilation fails with specific Emscripten version">
+    Use the recommended version:
+    ```bash
+    export EMSCRIPTEN_VERSION=tag-4.0.7
+    ../gradlew clean activateEmsdk createGiacWasmJs
+    ```
+    
+    Different versions may have compatibility issues with Giac.
+  </Accordion>
+
+  <Accordion title="Out of memory errors">
+    Increase initial memory allocation:
+    ```javascript
+    var Module = {
+      TOTAL_MEMORY: 512 * 1024 * 1024,  // 512MB
+      ALLOW_MEMORY_GROWTH: true
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="GMP/MPFR errors">
+    Ensure you're using compatible prebuilt libraries from `src/giac.js/prebuilt/`.
+    
+    If rebuilding from source, versions must match:
+    - GMP 6.3.0
+    - MPFR 4.2.1
+  </Accordion>
+</AccordionGroup>
+
+## Browser Compatibility
+
+Giac WebAssembly works on all modern browsers:
+
+- ✅ Chrome 57+
+- ✅ Firefox 52+
+- ✅ Safari 11+
+- ✅ Edge 16+
+- ✅ Opera 44+
+
+<Warning>
+Internet Explorer does not support WebAssembly.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Building Guide" icon="code" href="/build/linux">
+    Build WebAssembly from source
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/overview">
+    Explore available functions
+  </Card>
+  <Card title="Node.js Integration" icon="node-js" href="/platforms/nodejs">
+    Use Giac in Node.js applications
+  </Card>
+  <Card title="Core Concepts" icon="rocket" href="/concepts/architecture">
+    Understand Giac architecture
+  </Card>
+</CardGroup>

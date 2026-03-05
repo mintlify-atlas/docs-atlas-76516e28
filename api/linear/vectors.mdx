@@ -1,0 +1,366 @@
+---
+title: Vector Operations
+description: Vector data structures and operations in Giac
+---
+
+## Overview
+
+Vectors in Giac are represented using the `vecteur` type, which is a C++ `std::vector<gen>`. This provides a flexible container for generic algebraic elements.
+
+## Type Definitions
+
+### vecteur
+
+```cpp
+typedef std::vector<gen> vecteur;
+```
+
+The fundamental vector type in Giac, a dynamic array of generic algebraic elements.
+
+### Iterator Types
+
+```cpp
+typedef vecteur::const_iterator const_iterateur;
+typedef vecteur::iterator iterateur;
+```
+
+Iterator types for traversing vectors.
+
+### Specialized Matrix Types
+
+```cpp
+typedef vecteur matrice;
+```
+
+Matrices are represented as vectors of vectors (see [Matrix Operations](/api/linear/matrices)).
+
+## Vector Construction
+
+### makevecteur
+
+Construct vectors with 1 to 14 elements.
+
+```cpp
+vecteur makevecteur(const gen & a);
+vecteur makevecteur(const gen & a, const gen & b);
+vecteur makevecteur(const gen & a, const gen & b, const gen & c);
+// ... up to 14 parameters
+```
+
+<ParamField path="a, b, c, ..." type="const gen &">
+  Elements to include in the vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  A new vector containing the specified elements
+</ResponseField>
+
+**Example:**
+```cpp
+vecteur v = makevecteur(1, 2, 3);
+```
+
+### makesequence
+
+Construct sequences (similar to makevecteur but returns gen).
+
+```cpp
+gen makesequence(const gen & a);
+gen makesequence(const gen & a, const gen & b);
+// ... up to 9 parameters
+```
+
+### mergevecteur
+
+Merge two vectors.
+
+```cpp
+vecteur mergevecteur(const vecteur & v, const vecteur & w);
+```
+
+<ParamField path="v" type="const vecteur &">
+  First vector
+</ParamField>
+
+<ParamField path="w" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Concatenation of v and w
+</ResponseField>
+
+## Vector Arithmetic
+
+### addvecteur
+
+Add two vectors element-wise.
+
+```cpp
+vecteur addvecteur(const vecteur & a, const vecteur & b);
+void addvecteur(const vecteur & a, const vecteur & b, vecteur & res);
+```
+
+<ParamField path="a" type="const vecteur &">
+  First vector
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ParamField path="res" type="vecteur &">
+  Output parameter for result (in-place version)
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Element-wise sum a + b
+</ResponseField>
+
+### subvecteur
+
+Subtract vectors element-wise.
+
+```cpp
+vecteur subvecteur(const vecteur & a, const vecteur & b);
+void subvecteur(const vecteur & a, const vecteur & b, vecteur & res);
+```
+
+<ParamField path="a" type="const vecteur &">
+  First vector
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Element-wise difference a - b
+</ResponseField>
+
+### negvecteur
+
+Negate all elements of a vector.
+
+```cpp
+vecteur negvecteur(const vecteur & a);
+```
+
+<ParamField path="a" type="const vecteur &">
+  Input vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector with all elements negated
+</ResponseField>
+
+### Scalar Multiplication
+
+```cpp
+vecteur multvecteur(const gen & a, const vecteur & b);
+void multvecteur(const gen & a, const vecteur & b, vecteur & res);
+```
+
+<ParamField path="a" type="const gen &">
+  Scalar multiplier
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Vector to multiply
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector with each element multiplied by a
+</ResponseField>
+
+### Scalar Division
+
+```cpp
+vecteur divvecteur(const vecteur & b, const gen & a);
+void divvecteur(const vecteur & b, const gen & a, vecteur & res);
+```
+
+<ParamField path="b" type="const vecteur &">
+  Vector to divide
+</ParamField>
+
+<ParamField path="a" type="const gen &">
+  Scalar divisor
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector with each element divided by a
+</ResponseField>
+
+## Vector Products
+
+### dotvecteur
+
+Compute the dot (scalar) product of two vectors.
+
+```cpp
+gen dotvecteur(const vecteur & a, const vecteur & b);
+gen dotvecteur(const gen & a, const gen & b);
+```
+
+<ParamField path="a" type="const vecteur &">
+  First vector
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Scalar product (does not conjugate)
+</ResponseField>
+
+<Note>
+This function does not conjugate. For the standard inner product with conjugation, see `scalarproduct` in misc.h.
+</Note>
+
+### cross
+
+Compute the cross product (3D vectors).
+
+```cpp
+vecteur cross(const vecteur & v, const vecteur & w, GIAC_CONTEXT);
+gen cross(const gen & g1, const gen & g2, GIAC_CONTEXT);
+```
+
+<ParamField path="v" type="const vecteur &">
+  First 3D vector
+</ParamField>
+
+<ParamField path="w" type="const vecteur &">
+  Second 3D vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Cross product v × w
+</ResponseField>
+
+**Giac Command:** `_cross`
+
+## Utility Functions
+
+### vrows
+
+Get the number of elements in a vector.
+
+```cpp
+int vrows(const vecteur & a);
+```
+
+<ParamField path="a" type="const vecteur &">
+  Input vector
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Number of elements in the vector
+</ResponseField>
+
+### freecopy
+
+Make a free (modifiable) copy of a vector.
+
+```cpp
+gen freecopy(const gen & g);
+```
+
+<ParamField path="g" type="const gen &">
+  Vector to copy
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Modifiable copy of the vector
+</ResponseField>
+
+### is_fully_numeric
+
+Check if all vector elements are numeric.
+
+```cpp
+bool is_fully_numeric(const vecteur & v, int withfracint = 0);
+bool is_fully_numeric(const gen & a, int withfracint = 0);
+```
+
+<ParamField path="v" type="const vecteur &">
+  Vector to check
+</ParamField>
+
+<ParamField path="withfracint" type="int" default="0">
+  Fraction/integer handling mode
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if all elements are numeric
+</ResponseField>
+
+### is_exact
+
+Check if vector contains only exact values.
+
+```cpp
+bool is_exact(const vecteur & v);
+bool is_exact(const gen & g);
+```
+
+<ParamField path="v" type="const vecteur &">
+  Vector to check
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if all elements are exact (no floating point)
+</ResponseField>
+
+### is_integer_vecteur
+
+Check if all vector elements are integers.
+
+```cpp
+bool is_integer_vecteur(const vecteur & m, bool intonly = false);
+```
+
+<ParamField path="m" type="const vecteur &">
+  Vector to check
+</ParamField>
+
+<ParamField path="intonly" type="bool" default="false">
+  Restrict to machine integers only
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if all elements are integers
+</ResponseField>
+
+## Type Conversions
+
+### vecteur2index
+
+Convert a vector to an index.
+
+```cpp
+bool vecteur2index(const vecteur & v, index_t & i);
+```
+
+### vector_int2vecteur
+
+Convert integer vector to vecteur.
+
+```cpp
+void vector_int2vecteur(const std::vector<int> & v, vecteur & res);
+```
+
+### vecteur2vector_int
+
+Convert vecteur to integer vector with modular reduction.
+
+```cpp
+void vecteur2vector_int(const vecteur & v, int modulo, std::vector<int> & res);
+```
+
+## See Also
+
+- [Matrix Operations](/api/linear/matrices) - Matrix operations and linear algebra
+- [Gaussian Elimination](/api/linear/gaussian-elimination) - Row reduction and system solving

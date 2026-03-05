@@ -1,0 +1,423 @@
+---
+title: Algebraic Extensions
+description: Algebraic extension support and field operations in Giac
+---
+
+## Overview
+
+Giac provides comprehensive support for algebraic extensions of Q (the rationals), allowing computations in fields defined by minimal polynomials. The API handles root representations, extension field arithmetic, and conversions between symbolic and algebraic forms.
+
+## Algebraic Extension Construction
+
+### algebraic_EXTension()
+
+```cpp alg_ext.h:54
+gen algebraic_EXTension(const gen & a, const gen & v);
+```
+
+Creates an algebraic extension element from a representation `a` and a variable `v`.
+
+### rootof()
+
+```cpp alg_ext.h:64
+gen rootof(const gen & e, GIAC_CONTEXT);
+```
+
+Creates a root-of representation for solving polynomial equations.
+
+```cpp alg_ext.h:63
+gen symb_rootof(const gen & p, const gen &pmin, GIAC_CONTEXT);
+```
+
+Symbolic form: `rootof(p, pmin)` represents a root of minimal polynomial `pmin` selected by `p`.
+
+<CodeGroup>
+```cpp C++ Example
+// Create rootof(x^2-2) - represents sqrt(2)
+gen pmin = makevecteur(1, 0, -2);  // x^2 - 2
+gen root = rootof(pmin, context);
+```
+
+```python Python Example
+from giacpy import giac
+
+# Create an algebraic number sqrt(2)
+root = giac.rootof("x^2-2")
+print(root)  # rootof representation
+```
+</CodeGroup>
+
+### ext_reduce()
+
+```cpp alg_ext.h:55-57
+gen ext_reduce(const gen & a, const gen & v);
+gen ext_reduce(const gen & e);
+void clean_ext_reduce(vecteur & v);
+void clean_ext_reduce(gen & g);
+```
+
+Reduces expressions in algebraic extensions to canonical form.
+
+## Extension Field Arithmetic
+
+### ext_add()
+
+```cpp alg_ext.h:59
+gen ext_add(const gen & a, const gen & b, GIAC_CONTEXT);
+```
+
+Adds two elements in an algebraic extension field.
+
+### ext_sub()
+
+```cpp alg_ext.h:60
+gen ext_sub(const gen & a, const gen & b, GIAC_CONTEXT);
+```
+
+Subtracts two elements in an algebraic extension field.
+
+### ext_mul()
+
+```cpp alg_ext.h:61
+gen ext_mul(const gen & a, const gen & b, GIAC_CONTEXT);
+```
+
+Multiplies two elements in an algebraic extension field.
+
+### inv_EXT()
+
+```cpp alg_ext.h:62
+gen inv_EXT(const gen & a);
+```
+
+Computes the multiplicative inverse in an algebraic extension field.
+
+<CodeGroup>
+```cpp Extension Arithmetic
+gen sqrt2 = rootof(makevecteur(1, 0, -2), context);
+gen sqrt3 = rootof(makevecteur(1, 0, -3), context);
+
+// Arithmetic in extension field
+gen sum = ext_add(sqrt2, sqrt3, context);
+gen product = ext_mul(sqrt2, sqrt3, context);  // sqrt(6)
+gen inverse = inv_EXT(sqrt2);  // sqrt(2)/2
+```
+</CodeGroup>
+
+## Common Extension Field
+
+### common_EXT()
+
+```cpp alg_ext.h:52
+gen common_EXT(gen & a, gen & b, const vecteur * l, GIAC_CONTEXT);
+```
+
+Finds a common extension field for two algebraic elements and converts them to that field.
+
+<ParamField path="a" type="gen &">
+  First element (modified to be in common field)
+</ParamField>
+
+<ParamField path="b" type="gen &">
+  Second element (modified to be in common field)
+</ParamField>
+
+<ParamField path="l" type="const vecteur *">
+  Optional list of variables
+</ParamField>
+
+<ParamField path="return" type="gen">
+  The minimal polynomial of the common extension
+</ParamField>
+
+### common_minimal_POLY()
+
+```cpp alg_ext.h:53
+gen common_minimal_POLY(const gen & ga, const gen & gb, 
+                        gen & a, gen & b, int &k, 
+                        const vecteur *l, GIAC_CONTEXT);
+```
+
+Computes the common minimal polynomial and converts elements.
+
+## Minimal Polynomial Operations
+
+### min_pol()
+
+```cpp alg_ext.h:66
+vecteur min_pol(gen & a);
+```
+
+Extracts the minimal polynomial from an algebraic extension element.
+
+### minimal_polynomial()
+
+```cpp sym2poly.h:138
+gen minimal_polynomial(const gen & pp, bool minonly, GIAC_CONTEXT);
+```
+
+Computes the minimal polynomial of an algebraic expression.
+
+## Root Selection and Evaluation
+
+### select_root()
+
+```cpp alg_ext.h:44
+gen select_root(const vecteur & v, GIAC_CONTEXT);
+```
+
+Selects a specific root from a list of roots of a polynomial.
+
+```cpp alg_ext.h:45
+gen in_select_root(const vecteur & a, bool reel, GIAC_CONTEXT, 
+                   double eps=1e-14);
+```
+
+Selects a root with optional constraint to real roots.
+
+### horner_rootof()
+
+```cpp alg_ext.h:47
+gen horner_rootof(const vecteur & p, const gen & g, GIAC_CONTEXT);
+```
+
+Evaluates a polynomial at a root-of expression using Horner's method.
+
+### has_rootof_value()
+
+```cpp alg_ext.h:48
+bool has_rootof_value(const gen & Pmin, gen & value, GIAC_CONTEXT);
+```
+
+Checks if a root-of expression has a known numeric value.
+
+## Numerical Approximation
+
+### alg_evalf()
+
+```cpp alg_ext.h:50
+gen alg_evalf(const gen & a, const gen &b, const gen & c, GIAC_CONTEXT);
+```
+
+Evaluates an algebraic extension element to floating-point.
+
+### approx_rootof()
+
+```cpp alg_ext.h:51
+gen approx_rootof(const gen & e, GIAC_CONTEXT);
+```
+
+Computes numerical approximation of a root-of expression.
+
+<CodeGroup>
+```cpp Approximation Example
+gen root = rootof(makevecteur(1, 0, -2), context);
+gen approx = approx_rootof(root, context);
+// approx ≈ 1.41421356...
+```
+</CodeGroup>
+
+## Root Caching
+
+### proot_cached() / proot_cache()
+
+```cpp alg_ext.h:34-35
+bool proot_cached(const vecteur & v, double eps, vecteur & res);
+bool proot_cache(const vecteur & v, double eps, const vecteur & res);
+```
+
+Cache system for polynomial roots to avoid recomputation.
+
+### galoisconj_cached() / galoisconj_cache()
+
+```cpp alg_ext.h:37-38
+bool galoisconj_cached(const vecteur & v, vecteur & res);
+bool galoisconj_cache(const vecteur & v, const vecteur & res);
+```
+
+Cache system for Galois conjugates.
+
+## Galois Theory
+
+### galoisconj()
+
+```cpp alg_ext.h:39
+vecteur galoisconj(const vecteur & v, GIAC_CONTEXT);
+```
+
+Computes all Galois conjugates of an algebraic element.
+
+### conj_in_nf()
+
+```cpp alg_ext.h:40
+bool conj_in_nf(const vecteur & w, gen & g, GIAC_CONTEXT);
+```
+
+Checks if conjugates are in a number field.
+
+## Variable Management
+
+### lvar()
+
+```cpp sym2poly.h:119-126
+vecteur lvar(const gen & e);
+void lvar(const gen & e, vecteur & l);
+```
+
+Extracts list of variables from an expression.
+
+### alg_lvar()
+
+```cpp sym2poly.h:132-136
+void alg_lvar(const gen & e, matrice & m);
+matrice alg_lvar(const gen & e);
+```
+
+Extracts variables organized by algebraic extension levels.
+
+<Info>
+**Extension Format**: The result is a matrix where each row represents variables at one extension level:
+- First row: base variables (not in extensions)
+- Subsequent rows: variables in each extension level
+</Info>
+
+## Conversion Functions
+
+### sym2r() / r2sym()
+
+```cpp sym2poly.h:149-152
+fraction sym2r(const gen & e, const vecteur & l, GIAC_CONTEXT);
+bool sym2r(const gen &e, const vecteur &l, int l_size, 
+           gen & num, gen & den, GIAC_CONTEXT);
+```
+
+Converts symbolic expressions to internal polynomial representation.
+
+```cpp sym2poly.h:164-168
+gen r2sym(const gen & p, const vecteur & l, GIAC_CONTEXT);
+gen r2e(const gen & p, const vecteur & l, GIAC_CONTEXT);
+```
+
+Converts internal polynomial form back to symbolic expressions.
+
+<CodeGroup>
+```cpp Conversion Example
+vecteur vars = makevecteur(x, y);
+gen expr = pow(x, 2) + 2*x*y + pow(y, 2);
+
+// Convert to internal form
+fraction f = sym2r(expr, vars, context);
+
+// Convert back to symbolic
+gen result = r2sym(f, vars, context);
+```
+</CodeGroup>
+
+## Algebraic Normal Form
+
+### algnum_normal()
+
+```cpp sym2poly.h:55
+bool algnum_normal(gen & e, GIAC_CONTEXT);
+```
+
+Simplifies expressions in real algebraic extensions of Q. Requires Gröbner basis implementation.
+
+### algnum_rref()
+
+```cpp sym2poly.h:57
+bool algnum_rref(const matrice & a, matrice & res, vecteur & pivots, 
+                 gen & det, int redtype, GIAC_CONTEXT);
+```
+
+Row reduction for matrices with algebraic number coefficients.
+
+<ParamField path="redtype" type="int">
+  - 0: rref with full reduction
+  - 1: rref upper triangular
+  - 2: compute determinant only
+  - 3: LU decomposition
+</ParamField>
+
+## Utility Functions
+
+### is_sqrt()
+
+```cpp alg_ext.h:43
+bool is_sqrt(const gen & a, gen & arg);
+```
+
+Tests if an expression is a square root and extracts the argument.
+
+### islesscomplex()
+
+```cpp alg_ext.h:42
+bool islesscomplex(const gen & a, const gen & b);
+```
+
+Compares complexity of two expressions for ordering.
+
+### is_known_rootof()
+
+```cpp alg_ext.h:46
+bool is_known_rootof(const vecteur & v, const vecteur &lv, 
+                     gen & symroot, GIAC_CONTEXT);
+```
+
+Checks if a root is in the known root database.
+
+## Global Maps
+
+```cpp alg_ext.h:96-99
+rootmap & symbolic_rootof_list();
+rootmap & proot_list();
+rootmap & galoisconj_list();
+```
+
+Access global caches for symbolic roots, polynomial roots, and Galois conjugates.
+
+## Example: Working with Q(√2, √3)
+
+<CodeGroup>
+```cpp Complete Example
+#include "alg_ext.h"
+
+void example_extension_field() {
+    context ctx;
+    
+    // Create sqrt(2)
+    vecteur pmin2 = makevecteur(1, 0, -2);  // x^2 - 2
+    gen sqrt2 = rootof(pmin2, &ctx);
+    
+    // Create sqrt(3)
+    vecteur pmin3 = makevecteur(1, 0, -3);  // x^2 - 3
+    gen sqrt3 = rootof(pmin3, &ctx);
+    
+    // Find common extension Q(sqrt(2), sqrt(3)) = Q(sqrt(6))
+    gen a = sqrt2, b = sqrt3;
+    gen common_poly = common_EXT(a, b, nullptr, &ctx);
+    
+    // Perform arithmetic in the extension field
+    gen sum = ext_add(sqrt2, sqrt3, &ctx);
+    gen prod = ext_mul(sqrt2, sqrt3, &ctx);  // sqrt(6)
+    
+    // Reduce to normal form
+    gen reduced = ext_reduce(sum, &ctx);
+    
+    // Get numerical approximation
+    gen approx_sum = alg_evalf(sum, 0, 0, &ctx);
+    // approx_sum ≈ 3.146...
+}
+```
+</CodeGroup>
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Polynomial API" icon="function" href="/api/algebra/polynomials">
+    Core polynomial operations
+  </Card>
+  <Card title="Equation Solving" icon="sigma" href="/api/solvers/equation-solving">
+    Solve equations with algebraic extensions
+  </Card>
+</CardGroup>

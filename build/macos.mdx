@@ -1,0 +1,375 @@
+---
+title: Building on macOS
+description: Complete guide to compile Giac on macOS systems
+---
+
+This guide covers building Giac on macOS for both Intel (x86_64) and Apple Silicon (ARM64) architectures.
+
+## Prerequisites
+
+### Install Xcode Command Line Tools
+
+```bash
+xcode-select --install
+```
+
+### Install Homebrew (Optional)
+
+If you want to use system libraries instead of prebuilt static libraries:
+
+```bash
+brew install cmake gmp mpfr
+```
+
+<Note>
+The Giac source tree includes prebuilt static versions of GMP and MPFR for macOS. Using these is recommended for better portability and easier linking.
+</Note>
+
+## Building with CMake
+
+<Steps>
+  <Step title="Install CMake">
+    ```bash
+    brew install cmake make
+    ```
+    
+    Or download from [cmake.org](https://cmake.org/download/).
+  </Step>
+
+  <Step title="Create build directory">
+    ```bash
+    mkdir build
+    cd build
+    ```
+  </Step>
+
+  <Step title="Configure the build">
+    ```bash
+    cmake ..
+    ```
+    
+    CMake will automatically:
+    - Detect macOS as the target platform
+    - Use prebuilt libraries from `src/jni/prebuilt/maccatalyst/x86_64/` or `arm64/`
+    - Configure for your architecture (Intel or Apple Silicon)
+  </Step>
+
+  <Step title="Compile">
+    ```bash
+    make
+    ```
+    
+    This builds:
+    - `minigiac`: Command-line executable
+    - `javagiac`: Dynamic library (.jnilib) for Java integration
+  </Step>
+
+  <Step title="Run the executable">
+    ```bash
+    ./minigiac
+    ```
+  </Step>
+</Steps>
+
+## Architecture-Specific Builds
+
+### Intel (x86_64) Build
+
+```bash
+cmake -DCMAKE_OSX_ARCHITECTURES=x86_64 ..
+make
+```
+
+The build uses prebuilt libraries from `src/jni/prebuilt/maccatalyst/x86_64/`.
+
+### Apple Silicon (ARM64) Build
+
+```bash
+cmake -DCMAKE_OSX_ARCHITECTURES=arm64 ..
+make
+```
+
+The build uses prebuilt libraries from `src/jni/prebuilt/maccatalyst/arm64/`.
+
+### Universal Binary (Both Architectures)
+
+To create a universal binary that runs on both Intel and Apple Silicon:
+
+```bash
+cmake -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" ..
+make
+```
+
+<Warning>
+Universal binary builds require both x86_64 and arm64 versions of all dependencies.
+</Warning>
+
+## Building with Gradle
+
+Giac supports Gradle builds on macOS with additional platform targets.
+
+### macOS Native Build
+
+```bash
+../gradlew minigiacExecutable
+```
+
+### Build for Specific Platform
+
+<CodeGroup>
+```bash Intel (AMD64)
+../gradlew javagiacOsx_amd64SharedLibrary
+```
+
+```bash Apple Silicon (ARM64)
+../gradlew javagiacOsx_arm64SharedLibrary
+```
+
+```bash Both Architectures
+../gradlew javagiacOsx_amd64SharedLibrary javagiacOsx_arm64SharedLibrary
+```
+</CodeGroup>
+
+## macOS-Specific Configuration
+
+### Compiler Settings
+
+The macOS build uses the following configuration:
+
+```cpp Compiler Flags
+-stdlib=libc++              # Use libc++ standard library
+-std=c++11                  # C++11 standard
+-mmacosx-version-min=10.7   # Minimum macOS version
+-target x86_64-apple-macos11 # Target specification (or arm64)
+-isysroot [MacOSX.sdk path] # SDK path
+```
+
+### Preprocessor Definitions
+
+Key macOS-specific definitions:
+
+| Definition | Purpose |
+|------------|----------|
+| `HAVE_UNISTD_H` | POSIX unistd.h available |
+| `APPLE_SMART` | Enable Apple-specific optimizations |
+| `NO_SCANDIR` | scandir() not available |
+| `HAVE_SYS_TIMES_H` | sys/times.h available |
+| `HAVE_SYS_TIME_H` | sys/time.h available |
+| `NO_GETTEXT` | Disable gettext internationalization |
+| `DONT_USE_LIBLAPLACK` | Don't use LAPACK library |
+
+### Linker Configuration
+
+The macOS linker uses these frameworks and flags:
+
+```bash
+-framework Accelerate        # Apple's optimized math library
+-framework CoreFoundation    # Core Foundation framework
+-stdlib=libc++ -lc++        # C++ standard library
+-lgmp -lmpfr -lpthread      # Required libraries
+-dynamiclib                  # Create dynamic library
+-Wl,-search_paths_first     # Linker search order
+```
+
+## SDK Configuration
+
+The build automatically detects SDK paths using `xcrun`:
+
+```bash
+# Verify SDK paths
+xcrun --sdk macosx --show-sdk-path
+xcrun --sdk macosx --find clang
+xcrun --sdk macosx --find gcc
+```
+
+Typical SDK location:
+```
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+```
+
+## Building iOS Frameworks
+
+Giac can also be compiled for iOS, iPhone Simulator, and Mac Catalyst.
+
+### iOS Device (ARM64)
+
+```bash
+../gradlew giacIos_arm64StaticLibrary
+```
+
+### iPhone Simulator
+
+<CodeGroup>
+```bash x86_64 (Intel Macs)
+../gradlew giacIphonesimulator_x86_64StaticLibrary
+```
+
+```bash ARM64 (Apple Silicon Macs)
+../gradlew giacIphonesimulator_arm64StaticLibrary
+```
+</CodeGroup>
+
+### Mac Catalyst
+
+```bash
+../gradlew giacMaccatalyst_x86_64StaticLibrary
+../gradlew giacMaccatalyst_arm64StaticLibrary
+```
+
+### Create XCFramework
+
+To build a complete XCFramework with all platforms:
+
+```bash
+../gradlew createIosXcframework
+```
+
+This creates `build/libs/framework/Giac.xcframework` containing:
+- iOS device (arm64)
+- iOS Simulator (arm64, x86_64)
+- Mac Catalyst (arm64, x86_64)
+
+### CocoaPods Package
+
+Create a CocoaPods-compatible zip:
+
+```bash
+../gradlew cocoapodsZip
+```
+
+Output: `build/cocoapods/Giac-[version].zip`
+
+## Debugging in Xcode
+
+While CMakeLists.txt is primarily for CLion, you can debug with Xcode:
+
+<Steps>
+  <Step title="Generate Xcode project">
+    ```bash
+    mkdir build-xcode
+    cd build-xcode
+    cmake -G Xcode ..
+    ```
+  </Step>
+
+  <Step title="Open in Xcode">
+    ```bash
+    open minigiac.xcodeproj
+    ```
+  </Step>
+
+  <Step title="Set breakpoints and debug">
+    Select the `minigiac` scheme and press `Cmd+R` to run or `Cmd+Y` to debug.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Linking Errors on macOS 10.14+
+
+If you encounter linking issues on macOS Mojave or later:
+
+```bash
+ld: library not found for -lgmp
+```
+
+Solution: The build system automatically handles this by using prebuilt static libraries. If you're using Homebrew libraries, ensure the link directories are correct:
+
+```bash
+cmake -DCMAKE_LIBRARY_PATH=/usr/local/lib ..
+```
+
+### libc++ Compatibility Issues
+
+```bash
+ld: warning: direct access in function '...' to global weak symbol
+```
+
+This warning is usually harmless. If problematic, ensure all dependencies are built with the same C++ standard library:
+
+```bash
+-stdlib=libc++
+```
+
+### Missing JDK Headers
+
+For JNI builds, if headers are not found:
+
+```bash
+fatal error: 'jni.h' file not found
+```
+
+The build looks for headers in `src/jni/jdkHeaders/darwin/`. Verify this directory exists and contains JNI headers.
+
+### Apple Silicon Specific Issues
+
+If building on Apple Silicon but getting x86_64 errors:
+
+```bash
+# Verify architecture
+file ./minigiac
+
+# Should show:
+minigiac: Mach-O 64-bit executable arm64
+```
+
+Force ARM64 build:
+```bash
+cmake -DCMAKE_OSX_ARCHITECTURES=arm64 ..
+```
+
+### Accelerate Framework Not Found
+
+```bash
+ld: framework not found Accelerate
+```
+
+Ensure Xcode Command Line Tools are properly installed:
+```bash
+sudo xcode-select --reset
+xcode-select --install
+```
+
+## Using System Libraries (Homebrew)
+
+To use dynamically linked libraries from Homebrew instead of static prebuilt ones:
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    brew install gmp mpfr
+    ```
+  </Step>
+
+  <Step title="Modify CMakeLists.txt">
+    Comment out or change lines 81-88 and 262:
+    ```cmake
+    # Comment out:
+    # find_static_library(gmp GMP_STATIC ...)
+    
+    # Use instead:
+    target_link_libraries(minigiac mpfr gmp)
+    ```
+  </Step>
+
+  <Step title="Configure with library paths">
+    ```bash
+    cmake -DCMAKE_PREFIX_PATH=/usr/local ..
+    make
+    ```
+  </Step>
+</Steps>
+
+## Performance Notes
+
+Apple Silicon builds benefit from native ARM64 optimizations. Benchmark comparison:
+
+| Architecture | Relative Performance |
+|--------------|---------------------|
+| ARM64 (native) | 100% (baseline) |
+| x86_64 (Rosetta 2) | ~70-80% |
+| Universal binary | Same as respective arch |
+
+<Note>
+For best performance on Apple Silicon, always build native ARM64 binaries.
+</Note>

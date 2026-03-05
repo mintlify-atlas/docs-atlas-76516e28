@@ -1,0 +1,134 @@
+---
+title: "API Overview"
+description: "Overview of the Giac C++ API for computer algebra"
+---
+
+## Introduction
+
+The Giac C++ API provides a comprehensive computer algebra system with support for symbolic computation, numerical evaluation, polynomial algebra, linear algebra, and more. All functionality is contained within the `giac` namespace.
+
+## Main Headers
+
+To use the Giac API, include the following headers from `src/giac/headers/`:
+
+- **gen.h** - Core gen class and type system
+- **global.h** - Global context and configuration
+- **vecteur.h** - Vectors and matrices
+- **symbolic.h** - Symbolic expressions
+- **unary.h** - Functions and operators
+
+## Quick Start
+
+```cpp
+#include "giac/headers/gen.h"
+#include "giac/headers/global.h"
+
+using namespace giac;
+
+// Create a context
+context ctx;
+
+// Create gen objects
+gen x(5);           // Integer
+gen y(3.14);        // Double
+gen z = x + y;      // Arithmetic
+
+// Evaluate expressions
+gen result = z.eval(1, &ctx);
+```
+
+## Core Components
+
+### The gen Class
+
+The central type in Giac is `gen`, a polymorphic container that can hold:
+- Integers (immediate or arbitrary precision)
+- Floating-point numbers (double or arbitrary precision)
+- Complex numbers
+- Symbolic expressions
+- Vectors and matrices
+- Rational numbers
+- Polynomials
+- And more
+
+See [gen class documentation](/api/gen) for complete details.
+
+### Context System
+
+Giac uses a context-based evaluation model. The `context` class manages:
+- Symbol tables
+- Global settings (precision, angle mode, etc.)
+- Evaluation state
+
+See [Context API](/api/context) for details.
+
+### Evaluation
+
+Giac provides multiple evaluation modes:
+- **eval()** - Symbolic evaluation
+- **evalf()** - Floating-point evaluation
+- **evalf_double()** - Force double precision
+
+See [Evaluation functions](/api/evaluation) for complete reference.
+
+## Namespace
+
+All Giac functionality is in the `giac` namespace:
+
+```cpp
+#ifndef NO_NAMESPACE_GIAC
+namespace giac {
+  // ... all Giac code
+}
+#endif
+```
+
+## Type System
+
+The gen type system is defined in `dispatch.h` with constants like:
+- `_INT_` - Integer type
+- `_DOUBLE_` - Double type
+- `_CPLX` - Complex type
+- `_SYMB` - Symbolic type
+- `_VECT` - Vector type
+- `_FRAC` - Fraction type
+- `_ZINT` - Arbitrary precision integer
+
+## Memory Management
+
+Giac uses reference counting for complex types. The gen class handles memory automatically through:
+- Reference-counted pointers for heap-allocated types
+- Immediate values for small integers and doubles (with DOUBLEVAL)
+- Copy-on-write semantics for efficiency
+
+## Thread Safety
+
+Giac can be compiled with thread support using LIBPTHREAD. Each context can be used independently across threads.
+
+## Configuration
+
+Compile-time options:
+- `SMARTPTR64` - Use 64-bit smart pointers (reduces gen size to 8 bytes)
+- `DOUBLEVAL` - Store doubles directly in gen (increases size but improves precision)
+- `USE_GMP_REPLACEMENTS` - Use custom implementations instead of GMP
+- `HAVE_LIBMPFR` - Enable MPFR for arbitrary precision floats
+
+## Error Handling
+
+Giac provides error functions that set error state:
+
+```cpp
+void settypeerr(GIAC_CONTEXT);
+void setsizeerr(GIAC_CONTEXT);
+void setdimerr(GIAC_CONTEXT);
+
+gen gentypeerr(GIAC_CONTEXT);
+gen gensizeerr(GIAC_CONTEXT);
+gen gendimerr(GIAC_CONTEXT);
+```
+
+## Next Steps
+
+- [gen class reference](/api/gen) - Complete gen class documentation
+- [Context API](/api/context) - Context creation and configuration
+- [Evaluation functions](/api/evaluation) - Evaluation modes and options

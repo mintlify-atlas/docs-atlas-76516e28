@@ -1,0 +1,388 @@
+---
+title: "Differential Equation Solvers"
+description: "Functions for solving ordinary and partial differential equations"
+---
+
+## Overview
+
+Giac provides comprehensive differential equation solving capabilities, including symbolic methods (separation of variables, Laplace transforms, series solutions) and numerical methods (ODE solvers).
+
+## Symbolic ODE Solvers
+
+### desolve
+
+Main symbolic differential equation solver.
+
+```cpp
+gen desolve(const gen & f, const gen & x, const gen & y, int & ordre, 
+            vecteur & parameters, GIAC_CONTEXT);
+gen desolve_f(const gen & f_orig, const gen & x_orig, const gen & y_orig, 
+              int & ordre, vecteur & parameters, gen & f, int step_info, 
+              bool & num, GIAC_CONTEXT);
+gen _desolve(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Differential equation (can be an equation or expression)
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Independent variable
+</ParamField>
+
+<ParamField path="y" type="gen" required>
+  Dependent variable (function to solve for)
+</ParamField>
+
+<ParamField path="ordre" type="int&" required>
+  Output: order of the differential equation
+</ParamField>
+
+<ParamField path="parameters" type="vecteur&" required>
+  Output: integration constants (c_0, c_1, ...)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  General solution to the differential equation
+</ResponseField>
+
+<CodeGroup>
+```cpp First-order ODE
+// Solve dy/dx = y
+// Solution: y = c_0 * exp(x)
+identificateur x("x"), y("y");
+gen ode = symb_equal(symb_derive(y, x), y);
+gen args = makesequence(ode, x, y);
+gen result = _desolve(args, context0);
+```
+
+```cpp Second-order ODE
+// Solve y'' + y = 0
+// Solution: y = c_0*cos(x) + c_1*sin(x)
+gen ode = symb_equal(derive(y, x, 2) + y, 0);
+gen result = _desolve(makesequence(ode, x, y), context0);
+```
+
+```cpp ODE with initial conditions
+// Solve dy/dx = y, y(0) = 1
+// Solution: y = exp(x)
+gen ode = symb_equal(derive(y, x), y);
+gen ic = symb_equal(subst(y, x, 0), 1);
+gen result = _desolve(makesequence(ode, x, y, ic), context0);
+```
+</CodeGroup>
+
+### separate_variables
+
+Separation of variables for first-order ODEs.
+
+```cpp
+bool separate_variables(const gen & f, const gen & x, const gen & y, 
+                        gen & xfact, gen & yfact, GIAC_CONTEXT);
+bool separate_variables(const gen & f, const gen & x, const gen & y, 
+                        gen & xfact, gen & yfact, int step_info, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Expression (usually from dy/dx = f(x,y) form)
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Independent variable
+</ParamField>
+
+<ParamField path="y" type="gen" required>
+  Dependent variable
+</ParamField>
+
+<ParamField path="xfact" type="gen&" required>
+  Output: factor depending only on x
+</ParamField>
+
+<ParamField path="yfact" type="gen&" required>
+  Output: factor depending only on y
+</ParamField>
+
+<ParamField path="step_info" type="int">
+  Level of step-by-step information to display
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if variables can be separated
+</ResponseField>
+
+This function determines if an ODE can be written as M(x)dx + N(y)dy = 0.
+
+## Transform Methods
+
+### laplace
+
+Laplace transform for solving ODEs.
+
+```cpp
+gen laplace(const gen & f, const gen & x, const gen & s, GIAC_CONTEXT);
+gen _laplace(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Function to transform
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Time variable
+</ParamField>
+
+<ParamField path="s" type="gen" required>
+  Frequency variable (transform domain)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Laplace transform F(s) = ∫₀^∞ f(x)e^(-sx) dx
+</ResponseField>
+
+<CodeGroup>
+```cpp Laplace transform
+// L{sin(t)} = 1/(s^2 + 1)
+identificateur t("t"), s("s");
+gen result = laplace(sin(t), t, s, context0);
+```
+
+```cpp Solving ODE with Laplace
+// Solve y'' + y = 0, y(0)=0, y'(0)=1
+// 1. Take Laplace: s²Y(s) - sy(0) - y'(0) + Y(s) = 0
+// 2. Solve for Y(s): Y(s) = 1/(s²+1)
+// 3. Inverse Laplace: y(t) = sin(t)
+```
+</CodeGroup>
+
+### ilaplace
+
+Inverse Laplace transform.
+
+```cpp
+gen ilaplace(const gen & f, const gen & x, const gen & s, GIAC_CONTEXT);
+gen _ilaplace(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Function in frequency domain
+</ParamField>
+
+<ParamField path="s" type="gen" required>
+  Frequency variable
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Time variable (output domain)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Original function in time domain
+</ResponseField>
+
+### ztrans
+
+Z-transform for difference equations.
+
+```cpp
+gen ztrans(const gen & f, const gen & x, const gen & s, GIAC_CONTEXT);
+gen _ztrans(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Discrete sequence
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Discrete variable (usually n)
+</ParamField>
+
+<ParamField path="s" type="gen" required>
+  Transform variable (usually z)
+</ParamField>
+
+The Z-transform is used for solving difference equations (discrete analogue of ODEs).
+
+### invztrans
+
+Inverse Z-transform.
+
+```cpp
+gen invztrans(const gen & f, const gen & x, const gen & s, GIAC_CONTEXT);
+gen _invztrans(const gen & args, GIAC_CONTEXT);
+```
+
+<CodeGroup>
+```cpp Solving difference equation
+// Solve a[n+1] = 2*a[n], a[0] = 1
+// 1. Z-transform: z*A(z) - z*a[0] = 2*A(z)
+// 2. Solve: A(z) = z/(z-2)
+// 3. Inverse: a[n] = 2^n
+```
+</CodeGroup>
+
+## Numerical ODE Solvers
+
+### odesolve
+
+Numerical ODE solver for initial value problems.
+
+```cpp
+gen odesolve(const gen & t0orig, const gen & t1orig, const gen & f, 
+             const gen & y0orig, double tstep, bool return_curve, 
+             double * ymin, double * ymax, int maxstep, GIAC_CONTEXT);
+gen _odesolve(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="t0orig" type="gen" required>
+  Initial time t₀
+</ParamField>
+
+<ParamField path="t1orig" type="gen" required>
+  Final time t₁
+</ParamField>
+
+<ParamField path="f" type="gen" required>
+  Right-hand side function f(t,y) for dy/dt = f(t,y)
+</ParamField>
+
+<ParamField path="y0orig" type="gen" required>
+  Initial condition y(t₀)
+</ParamField>
+
+<ParamField path="tstep" type="double" required>
+  Time step for integration
+</ParamField>
+
+<ParamField path="return_curve" type="bool" required>
+  If true, return array of [t, y(t)] pairs; if false, return only y(t₁)
+</ParamField>
+
+<ParamField path="ymin" type="double*">
+  Minimum y value (for stopping early)
+</ParamField>
+
+<ParamField path="ymax" type="double*">
+  Maximum y value (for stopping early)
+</ParamField>
+
+<ParamField path="maxstep" type="int" required>
+  Maximum number of steps
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Solution value y(t₁) or array of solution curve
+</ResponseField>
+
+<CodeGroup>
+```cpp Numerical ODE solution
+// Solve dy/dt = -y, y(0) = 1, from t=0 to t=1
+identificateur t("t"), y("y");
+gen f = makevecteur(-y, t, y); // [f(t,y), t, y]
+gen result = odesolve(0, 1, f, 1, 0.01, false, NULL, NULL, 1000, context0);
+// Returns: y(1) ≈ 0.368 (exact: 1/e)
+```
+
+```cpp System of ODEs
+// Solve system: dx/dt = y, dy/dt = -x
+// Initial: x(0)=1, y(0)=0
+gen f = makevecteur(
+  makevecteur(y, -x),  // [dx/dt, dy/dt]
+  t,
+  makevecteur(x, y)
+);
+gen result = odesolve(0, 2*cst_pi, f, makevecteur(1, 0), 
+                      0.01, true, NULL, NULL, 10000, context0);
+// Returns curve for circular motion
+```
+</CodeGroup>
+
+## Special ODE Methods
+
+### kovacicsols
+
+Kovacic's algorithm for second-order linear ODEs.
+
+```cpp
+#ifndef USE_GMP_REPLACEMENTS
+gen kovacicsols(const gen & r_orig, const gen & x, const gen & dy_coeff, 
+                GIAC_CONTEXT);
+gen _kovacicsols(const gen & g, GIAC_CONTEXT);
+#endif
+```
+
+<ParamField path="r_orig" type="gen" required>
+  Coefficient function for y'' = r(x)*y
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Independent variable
+</ParamField>
+
+<ParamField path="dy_coeff" type="gen" required>
+  Coefficient of y' (if not in canonical form)
+</ParamField>
+
+Kovacic's algorithm finds Liouvillian solutions (solutions involving algebraic functions, exponentials, and integrals) for second-order linear ODEs.
+
+## Utility Functions
+
+### diffeq_constante
+
+Generate integration constant for DE solutions.
+
+```cpp
+gen diffeq_constante(int i, GIAC_CONTEXT);
+```
+
+<ParamField path="i" type="int" required>
+  Index of constant (0 for c_0, 1 for c_1, etc.)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Integration constant symbol
+</ResponseField>
+
+### integrate_without_lnabs
+
+Integration without absolute value in logarithms (for ODE solving).
+
+```cpp
+gen integrate_without_lnabs(const gen & e, const gen & x, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  Expression to integrate
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Integration variable
+</ParamField>
+
+Useful in ODE solving where ln|u| should be written as ln(u).
+
+## Matrix ODEs
+
+### Kronecker
+
+Kronecker method for linear systems.
+
+```cpp
+gen _Kronecker(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="args" type="gen" required>
+  Arguments for Kronecker method
+</ParamField>
+
+Used for solving systems of linear ODEs with constant coefficients.
+
+## Notes
+
+- `desolve` attempts multiple methods: separation of variables, variation of parameters, series solutions
+- For linear ODEs with constant coefficients, characteristic equation method is used
+- Laplace transforms are particularly effective for initial value problems
+- Numerical solver uses adaptive step-size Runge-Kutta methods
+- Systems of ODEs can be solved by passing vectors for initial conditions
+- Boundary value problems require different approaches (shooting method, finite differences)
+- Stiff ODEs may require specialized solvers

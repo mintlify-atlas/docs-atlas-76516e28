@@ -1,0 +1,488 @@
+---
+title: 'Data Types and Type System'
+description: 'Understanding the gen class and Giac type hierarchy'
+---
+
+## The gen Class
+
+The `gen` class is the fundamental type in Giac, serving as a universal container for all mathematical objects. It uses a tagged union design for efficiency and type safety.
+
+### Structure Overview
+
+From `gen.h`:
+
+```cpp
+class gen {
+public:
+  unsigned char type;  // Type tag (see gen_unary_types)
+  signed char subtype; // Additional type information
+  unsigned short reserved; // Used for 64-bit pointers
+  
+  union {
+    // Immediate types (no heap allocation)
+    int val;                    // _INT_
+    double _DOUBLE_val;         // _DOUBLE_ (if DOUBLEVAL defined)
+    giac_float _FLOAT_val;      // _FLOAT_
+    
+    // Pointer types (reference counted)
+    ref_mpz_t * __ZINTptr;           // _ZINT (bigint)
+    ref_real_object * __REALptr;     // _REAL (arbitrary precision)
+    ref_complex * __CPLXptr;         // _CPLX (complex numbers)
+    ref_identificateur * __IDNTptr;  // _IDNT (variables)
+    ref_symbolic * __SYMBptr;        // _SYMB (expressions)
+    ref_vecteur * __VECTptr;         // _VECT (vectors/lists)
+    Tref_tensor<gen> * __POLYptr;    // _POLY (polynomials)
+    Tref_fraction<gen> * __FRACptr;  // _FRAC (fractions)
+    ref_string * __STRNGptr;         // _STRNG (strings)
+    // ... more pointer types
+  };
+};
+```
+
+## Type Categories
+
+### Immediate Types
+
+Stored directly without heap allocation:
+
+<AccordionGroup>
+  <Accordion title="Integer (_INT_)">
+    ```cpp
+    gen a(42);        // Creates integer 42
+    gen b = -17;      // Implicit conversion
+    int n = a.val;    // Access the value
+    ```
+    
+    - Range: 32-bit signed integer (-2³¹ to 2³¹-1)
+    - No memory allocation
+    - Fastest arithmetic operations
+  </Accordion>
+  
+  <Accordion title="Double (_DOUBLE_)">
+    ```cpp
+    gen x(3.14159);           // Creates double
+    gen y = 2.71828;          // Implicit conversion
+    double d = x.DOUBLE_val(); // Extract value
+    ```
+    
+    - Standard IEEE 754 double precision
+    - Immediate storage (no heap allocation)
+    - Fast floating-point operations
+  </Accordion>
+  
+  <Accordion title="Float (_FLOAT_)">
+    ```cpp
+    gen f(giac_float(1.5));  // Single precision
+    ```
+    
+    - Single precision floating point
+    - Used for reduced memory footprint
+  </Accordion>
+</AccordionGroup>
+
+### Numeric Types
+
+<AccordionGroup>
+  <Accordion title="Arbitrary Precision Integer (_ZINT)">
+    ```cpp
+    struct ref_mpz_t {
+      volatile ref_count_t ref_count;
+      mpz_t z;  // GMP arbitrary precision integer
+      ref_mpz_t():ref_count(1) {mpz_init(z);}
+      ~ref_mpz_t() { mpz_clear(z); }
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen big("123456789012345678901234567890", contextptr);
+    gen factorial_100 = factorial(100);
+    ```
+    
+    - Unlimited precision
+    - Automatically promoted from _INT_ when overflow
+    - Uses GMP (GNU Multiple Precision) library
+  </Accordion>
+  
+  <Accordion title="Arbitrary Precision Float (_REAL)">
+    ```cpp
+    class real_object {
+    public:
+      mpfr_t inf;  // MPFR arbitrary precision float
+      
+      real_object(double d);
+      real_object(const gen & g, unsigned int precision);
+      
+      virtual gen operator + (const real_object & g) const;
+      virtual gen operator * (const real_object & g) const;
+      virtual gen sqrt() const;
+      virtual gen sin() const;
+      // ... all mathematical operations
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen pi_100_digits = m_pi(100);  // π to 100 bits precision
+    gen precise = accurate_evalf(expr, 256);  // 256-bit precision
+    ```
+  </Accordion>
+  
+  <Accordion title="Complex Numbers (_CPLX)">
+    ```cpp
+    struct ref_complex {
+      volatile ref_count_t ref_count;
+      int display;  // 0=cartesian, 1=polar
+      gen re, im;   // Real and imaginary parts
+      
+      ref_complex(const gen & R, const gen & I):ref_count(1),display(0),re(R),im(I) {}
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen z(3, 4);           // 3 + 4i
+    gen w(2.0, -1.5);      // 2.0 - 1.5i
+    gen i = gen(0, 1);     // Imaginary unit
+    
+    gen real_part = z.re(contextptr);
+    gen imag_part = z.im(contextptr);
+    gen conjugate = z.conj(contextptr);
+    ```
+  </Accordion>
+  
+  <Accordion title="Fractions (_FRAC)">
+    ```cpp
+    template<class T> class Tfraction {
+    public:
+      T num;  // Numerator
+      T den;  // Denominator
+      // Always stored in reduced form: gcd(num,den)=1, den>0
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen half = gen(1, 2);        // Creates 1/2
+    gen frac = rdiv(gen(3), gen(7), contextptr);  // 3/7
+    ```
+    
+    - Automatically reduced to lowest terms
+    - Denominator always positive
+    - Both numerator and denominator are `gen` objects
+  </Accordion>
+</AccordionGroup>
+
+### Symbolic Types
+
+<AccordionGroup>
+  <Accordion title="Identifiers (_IDNT)">
+    Variables and symbolic constants:
+    
+    ```cpp
+    class identificateur {
+    public:
+      std::string id_name;  // Variable name
+      gen value;            // Optional value binding
+      // ... additional metadata
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen x("x", contextptr);         // Symbolic variable x
+    gen y = identificateur("y");    // Variable y
+    ```
+  </Accordion>
+  
+  <Accordion title="Symbolic Expressions (_SYMB)">
+    The heart of Giac's symbolic capabilities:
+    
+    ```cpp
+    struct symbolic {
+      unary_function_ptr sommet;  // Operation/function
+      gen feuille;                // Arguments (gen or vecteur)
+    };
+    ```
+    
+    Represents expressions as trees:
+    ```cpp
+    // x^2 + 3*x + 1 is represented as:
+    // symbolic(at_plus, vecteur([
+    //   symbolic(at_pow, vecteur([x, 2])),
+    //   symbolic(at_prod, vecteur([3, x])),
+    //   1
+    // ]))
+    
+    gen expr = pow(x, 2) + 3*x + 1;
+    ```
+  </Accordion>
+  
+  <Accordion title="Function Pointers (_FUNC)">
+    ```cpp
+    struct unary_function_ptr {
+      const unary_function_abstract * _ptr;
+      
+      gen operator () (const gen & arg, GIAC_CONTEXT) const;
+      bool quoted() const;
+    };
+    ```
+    
+    Built-in functions like `sin`, `cos`, `factor`, etc.
+  </Accordion>
+</AccordionGroup>
+
+### Container Types
+
+<AccordionGroup>
+  <Accordion title="Vectors (_VECT)">
+    ```cpp
+    typedef dbgprint_vector<gen> vecteur;
+    
+    struct ref_vecteur {
+      volatile ref_count_t ref_count;
+      vecteur v;  // std::vector<gen>
+      
+      ref_vecteur(const vecteur & w):ref_count(1),v(w) {}
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    vecteur v = makevecteur(1, 2, 3, 4);  // [1,2,3,4]
+    gen list(v);
+    gen matrix = gen(makevecteur(
+      makevecteur(1, 2),
+      makevecteur(3, 4)
+    ));  // [[1,2],[3,4]]
+    ```
+    
+    Subtypes:
+    - `_SEQ__VECT`: Sequence
+    - `_SET__VECT`: Set
+    - `_POLY1__VECT`: Dense polynomial
+    - `_MATRIX__VECT`: Matrix
+  </Accordion>
+  
+  <Accordion title="Strings (_STRNG)">
+    ```cpp
+    struct ref_string {
+      volatile ref_count_t ref_count;
+      std::string s;
+      
+      ref_string(const std::string & S):ref_count(1),s(S) {}
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen str("Hello, World!", contextptr);
+    gen filename("data.txt", contextptr);
+    ```
+  </Accordion>
+  
+  <Accordion title="Maps (_MAP)">
+    ```cpp
+    typedef std::map<gen,gen,comparegen> gen_map;
+    
+    struct ref_gen_map {
+      volatile ref_count_t ref_count;
+      gen_map m;
+      
+      ref_gen_map():ref_count(1),m() {}
+    };
+    ```
+    
+    Usage:
+    ```cpp
+    gen m = makemap();  // Create empty map
+    // Access via m[key] = value
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Polynomial Types
+
+<AccordionGroup>
+  <Accordion title="Multivariate Polynomials (_POLY)">
+    ```cpp
+    template <class T> class tensor {
+    public:
+      std::vector< monomial<T> > coord;  // Sparse representation
+      // Monomial ordering, variables, etc.
+    };
+    
+    typedef tensor<gen> polynome;
+    ```
+    
+    Sparse representation:
+    ```cpp
+    // 3*x^2*y + 2*x*y^2 + 5
+    // Stored as vector of monomials:
+    // [(3, [2,1]), (2, [1,2]), (5, [0,0])]
+    ```
+  </Accordion>
+  
+  <Accordion title="Dense 1D Polynomials (_POLY1__VECT)">
+    Stored as vectors with subtype `_POLY1__VECT`:
+    ```cpp
+    // x^3 + 2*x^2 + 3*x + 4
+    // Stored as: [1, 2, 3, 4] (coefficients from highest to lowest degree)
+    ```
+  </Accordion>
+  
+  <Accordion title="Sparse 1D Polynomials (_SPOL1)">
+    ```cpp
+    struct monome {
+      gen coeff;     // Coefficient
+      int exponent;  // Exponent
+    };
+    
+    typedef std::vector<monome> sparse_poly1;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Algebraic Extensions (_EXT)
+
+```cpp
+struct ref_algext {
+  volatile ref_count_t ref_count;
+  gen P;          // Element (polynomial or fraction)
+  gen Pmin;       // Minimal polynomial or rootof
+  gen additional; // Extra information
+};
+```
+
+Usage:
+```cpp
+// sqrt(2) as algebraic extension
+// Minimal polynomial: x^2 - 2
+gen sqrt2 = algebraic_EXTension(gen("x", contextptr), 
+                                makevecteur(gen(-2), gen(0), gen(1)));
+```
+
+### Modular Integers (_MOD)
+
+```cpp
+struct ref_modulo {
+  volatile ref_count_t ref_count;
+  gen n;       // Value
+  gen modulo;  // Modulus
+};
+```
+
+Usage:
+```cpp
+gen a = makemod(gen(7), gen(13));  // 7 mod 13
+gen b = makemod(gen(8), gen(13));  // 8 mod 13
+gen c = a * b;                      // 56 mod 13 = 4 mod 13
+```
+
+## Type Checking and Conversion
+
+### Type Testing
+
+```cpp
+// Check type
+if (g.type == _INT_) { /* integer */ }
+if (g.type == _DOUBLE_) { /* double */ }
+
+// Higher-level checks
+if (g.is_integer()) { /* any integer type */ }
+if (g.is_real(contextptr)) { /* real number */ }
+if (g.is_cinteger()) { /* constant integer */ }
+```
+
+### Type Conversion
+
+```cpp
+// To C++ types
+int i = g.to_int();                    // May throw if not integer
+double d = g.to_double(contextptr);    // Numerical evaluation
+
+// Safe extraction
+if (g.type == _INT_) {
+  int value = g.val;
+}
+
+// Pointer access (use carefully!)
+if (g.type == _VECT) {
+  vecteur * v = g.ref_VECTptr();
+}
+```
+
+## Type Promotion
+
+Giac automatically promotes types during operations:
+
+```cpp
+gen a(5);           // _INT_
+gen b(2.5);         // _DOUBLE_
+gen c = a + b;      // Result: 7.5 (_DOUBLE_)
+
+gen d(1000000000);  // _INT_
+gen e = d * d;      // Promoted to _ZINT_ (overflow)
+
+gen f(1, 2);        // Fraction 1/2 (_FRAC_)
+gen g = 3;
+gen h = f + g;      // Result: 7/2 (_FRAC_)
+```
+
+## Memory Management
+
+### Reference Counting
+
+All pointer types use automatic reference counting:
+
+```cpp
+gen a("x", contextptr);  // ref_count = 1
+gen b = a;                // ref_count = 2 (shared)
+b = gen(5);               // ref_count of x back to 1
+// When a goes out of scope, x is deleted
+```
+
+### Copy Semantics
+
+```cpp
+gen a(vecteur({1,2,3}));  // Creates vector
+gen b = a;                 // Shallow copy (shares ref_vecteur)
+
+// Modification triggers copy-on-write in some cases
+(*b.ref_VECTptr())[0] = 10;  // May modify shared data!
+```
+
+<Warning>
+  Direct pointer modifications bypass reference counting. Always use proper gen methods for modifications.
+</Warning>
+
+## Performance Considerations
+
+<CardGroup cols={2}>
+  <Card title="Use Immediate Types" icon="gauge-high">
+    `_INT_` and `_DOUBLE_` have no allocation overhead and are fastest
+  </Card>
+  
+  <Card title="Avoid Unnecessary Copies" icon="copy">
+    Pass gen by const reference when possible: `const gen &`
+  </Card>
+  
+  <Card title="Type Checking" icon="check">
+    Type checks (`g.type == _INT_`) are very fast constant-time operations
+  </Card>
+  
+  <Card title="Batching" icon="layer-group">
+    Group operations to minimize type conversions and allocations
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+    Learn about Giac's overall structure
+  </Card>
+  <Card title="Contexts" icon="layer-group" href="/concepts/contexts">
+    Understand evaluation contexts
+  </Card>
+</CardGroup>

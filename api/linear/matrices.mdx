@@ -1,0 +1,633 @@
+---
+title: Matrix Operations
+description: Matrix representation and linear algebra operations in Giac
+---
+
+## Overview
+
+Matrices in Giac are represented as vectors of vectors. The `matrice` type is an alias for `vecteur`, where each element is itself a `vecteur` representing a row.
+
+## Type Definition
+
+```cpp
+typedef vecteur matrice;
+```
+
+A matrix is a `vecteur` where each element is a `vecteur` (row vector).
+
+## Matrix Properties
+
+### ckmatrix
+
+Check if a structure is a valid matrix.
+
+```cpp
+bool ckmatrix(const matrice & a);
+bool ckmatrix(const matrice & a, bool allow_embedded_vect, bool ckundef = true);
+bool ckmatrix(const gen & a);
+```
+
+<ParamField path="a" type="const matrice &">
+  Matrix to validate
+</ParamField>
+
+<ParamField path="allow_embedded_vect" type="bool">
+  Allow nested vectors
+</ParamField>
+
+<ParamField path="ckundef" type="bool" default="true">
+  Check for undefined values
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if a is a valid matrix
+</ResponseField>
+
+### is_squarematrix
+
+Check if a matrix is square.
+
+```cpp
+bool is_squarematrix(const matrice & a);
+bool is_squarematrix(const gen & a);
+```
+
+<ParamField path="a" type="const matrice &">
+  Matrix to check
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if matrix has equal rows and columns
+</ResponseField>
+
+### Matrix Dimensions
+
+```cpp
+int mrows(const matrice & a);
+int mcols(const matrice & a);
+void mdims(const matrice & m, int & r, int & c);
+```
+
+<ParamField path="a" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Number of rows (mrows) or columns (mcols)
+</ResponseField>
+
+## Matrix Construction
+
+### midn
+
+Create an identity matrix.
+
+```cpp
+matrice midn(int n);
+void midn(int n, matrice & res);
+```
+
+<ParamField path="n" type="int">
+  Size of the identity matrix
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  n×n identity matrix
+</ResponseField>
+
+**Giac Command:** `_idn`
+
+**Example:**
+```cpp
+matrice I = midn(3); // 3×3 identity matrix
+```
+
+### mranm
+
+Generate a random matrix.
+
+```cpp
+matrice mranm(int n, int m, const gen & f, GIAC_CONTEXT);
+```
+
+<ParamField path="n" type="int">
+  Number of rows
+</ParamField>
+
+<ParamField path="m" type="int">
+  Number of columns
+</ParamField>
+
+<ParamField path="f" type="const gen &">
+  Random element generator function
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  n×m random matrix
+</ResponseField>
+
+**Giac Command:** `_ranm`
+
+### makefreematrice
+
+Create a matrix with modifiable rows.
+
+```cpp
+matrice makefreematrice(const matrice & m);
+```
+
+<ParamField path="m" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Matrix with independent row vectors (safe for in-place modification)
+</ResponseField>
+
+## Matrix Operations
+
+### mtran
+
+Transpose a matrix.
+
+```cpp
+matrice mtran(const matrice & a);
+void mtran(const matrice & a, matrice & res, int ncolres = 0, bool ckundef = true);
+```
+
+<ParamField path="a" type="const matrice &">
+  Matrix to transpose
+</ParamField>
+
+<ParamField path="ncolres" type="int" default="0">
+  Expected number of columns in result
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Transposed matrix
+</ResponseField>
+
+**Giac Command:** `_tran`
+
+### mmult
+
+Matrix multiplication.
+
+```cpp
+matrice mmult(const matrice & a, const matrice & b);
+void mmult(const matrice & a, const matrice & b, matrice & res);
+bool mmultck(const matrice & a, const matrice & b, matrice & res);
+```
+
+<ParamField path="a" type="const matrice &">
+  First matrix
+</ParamField>
+
+<ParamField path="b" type="const matrice &">
+  Second matrix
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Product matrix a × b
+</ResponseField>
+
+<Note>
+`mmult` assumes dimensions are compatible. Use `mmultck` for dimension checking.
+</Note>
+
+### Matrix-Vector Operations
+
+```cpp
+vecteur multmatvecteur(const matrice & a, const vecteur & b);
+void multmatvecteur(const matrice & a, const vecteur & b, vecteur & res);
+
+vecteur multvecteurmat(const vecteur & a, const matrice & b);
+void multvecteurmat(const vecteur & a, const matrice & b, vecteur & res);
+```
+
+<ParamField path="a" type="const matrice &">
+  Matrix
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Vector
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Result of matrix-vector multiplication
+</ResponseField>
+
+### mtrace
+
+Compute matrix trace.
+
+```cpp
+gen mtrace(const matrice & a);
+gen ckmtrace(const gen & a, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Sum of diagonal elements
+</ResponseField>
+
+**Giac Command:** `_trace`
+
+## Determinant and Inverse
+
+### mdet
+
+Compute matrix determinant.
+
+```cpp
+gen mdet(const matrice & a, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Determinant of a
+</ResponseField>
+
+**Giac Command:** `_det`
+
+### minv
+
+Compute matrix inverse.
+
+```cpp
+matrice minv(const matrice & a, GIAC_CONTEXT);
+bool minv(const matrice & a, matrice & res, bool convert_internal, int algorithm, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix to invert
+</ParamField>
+
+<ParamField path="convert_internal" type="bool">
+  Convert to internal representation
+</ParamField>
+
+<ParamField path="algorithm" type="int">
+  Algorithm selection (if unsure, use 1)
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Inverse matrix a⁻¹
+</ResponseField>
+
+<Note>
+Returns empty matrix if a is singular.
+</Note>
+
+## Eigenvalues and Eigenvectors
+
+### megvl
+
+Compute eigenvalues.
+
+```cpp
+vecteur megvl(const matrice & a, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Vector of eigenvalues
+</ResponseField>
+
+**Giac Command:** `_egvl`
+
+### megv
+
+Compute eigenvectors.
+
+```cpp
+matrice megv(const matrice & a, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Matrix of eigenvectors
+</ResponseField>
+
+**Giac Command:** `_egv`
+
+### egv
+
+Full eigenvalue decomposition.
+
+```cpp
+bool egv(const matrice & m, matrice & p, vecteur & d, GIAC_CONTEXT, 
+         bool jordan, bool rational_jordan_form, bool eigenvalues_only);
+```
+
+<ParamField path="m" type="const matrice &">
+  Input square matrix
+</ParamField>
+
+<ParamField path="p" type="matrice &">
+  Output eigenvector matrix
+</ParamField>
+
+<ParamField path="d" type="vecteur &">
+  Output eigenvalues (or Jordan form if jordan=true)
+</ParamField>
+
+<ParamField path="jordan" type="bool">
+  Return Jordan form instead of diagonal
+</ParamField>
+
+<ParamField path="rational_jordan_form" type="bool">
+  Use rational Jordan form
+</ParamField>
+
+<ParamField path="eigenvalues_only" type="bool">
+  Only compute eigenvalues
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if successful
+</ResponseField>
+
+## Characteristic Polynomial
+
+### mpcar
+
+Compute characteristic polynomial.
+
+```cpp
+vecteur mpcar(const matrice & a, vecteur & B, bool compute_B, GIAC_CONTEXT);
+vecteur mpcar(const matrice & a, vecteur & Bv, bool compute_Bv, 
+              bool convert_internal, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ParamField path="B" type="vecteur &">
+  Output parameter for additional computation
+</ParamField>
+
+<ParamField path="compute_B" type="bool">
+  Whether to compute B parameter
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Coefficients of characteristic polynomial
+</ResponseField>
+
+**Giac Command:** `_pcar`
+
+## Kernel and Image
+
+### mker
+
+Compute kernel (null space) of a matrix.
+
+```cpp
+vecteur mker(const matrice & a, GIAC_CONTEXT);
+bool mker(const matrice & a, vecteur & v, int algorithm, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ParamField path="algorithm" type="int" default="0">
+  Algorithm selection
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Basis vectors for the kernel
+</ResponseField>
+
+**Giac Command:** `_ker`
+
+### mimage
+
+Compute image (column space) of a matrix.
+
+```cpp
+vecteur mimage(const matrice & a, GIAC_CONTEXT);
+bool mimage(const matrice & a, vecteur & v, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Basis vectors for the column space
+</ResponseField>
+
+**Giac Command:** `_image`
+
+## Matrix Decompositions
+
+### mlu
+
+LU decomposition.
+
+```cpp
+bool mlu(const matrice & a0, vecteur & P, matrice & L, matrice & U, GIAC_CONTEXT);
+```
+
+<ParamField path="a0" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ParamField path="P" type="vecteur &">
+  Permutation vector
+</ParamField>
+
+<ParamField path="L" type="matrice &">
+  Lower triangular matrix
+</ParamField>
+
+<ParamField path="U" type="matrice &">
+  Upper triangular matrix
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if decomposition successful
+</ResponseField>
+
+**Giac Command:** `_lu`
+
+### QR Decomposition
+
+**Giac Command:** `_qr`
+
+### Cholesky Decomposition
+
+**Giac Command:** `_cholesky`
+
+### SVD (Singular Value Decomposition)
+
+**Giac Command:** `_svd`
+
+### LDL Decomposition
+
+```cpp
+bool ldl(matrice & a, std::vector<int> & perm, int mat_type, bool & sing, 
+         double time_limit, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="matrice &">
+  Input/output matrix
+</ParamField>
+
+<ParamField path="perm" type="std::vector<int> &">
+  Permutation vector
+</ParamField>
+
+<ParamField path="mat_type" type="int">
+  Matrix type indicator
+</ParamField>
+
+<ParamField path="sing" type="bool &">
+  Set to true if matrix is singular
+</ParamField>
+
+<ParamField path="time_limit" type="double">
+  Maximum computation time
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if decomposition successful
+</ResponseField>
+
+**Giac Command:** `_ldl`
+
+## Jordan Form
+
+### mjordan
+
+Compute Jordan normal form.
+
+```cpp
+vecteur mjordan(const matrice & a, bool rational_jordan, GIAC_CONTEXT);
+gen jordan(const gen & a, bool rational_jordan, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="const matrice &">
+  Square matrix
+</ParamField>
+
+<ParamField path="rational_jordan" type="bool">
+  Use rational Jordan form
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Jordan normal form decomposition
+</ResponseField>
+
+**Giac Commands:** `_jordan`, `_rat_jordan`
+
+## Special Matrix Operations
+
+### matpow
+
+Matrix power.
+
+```cpp
+matrice matpow(const matrice & m, const gen & n, GIAC_CONTEXT);
+```
+
+<ParamField path="m" type="const matrice &">
+  Base matrix
+</ParamField>
+
+<ParamField path="n" type="const gen &">
+  Exponent
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Matrix power mⁿ
+</ResponseField>
+
+**Giac Command:** `_matpow`
+
+### Hessenberg Form
+
+```cpp
+void hessenberg(std_matrix<gen> & H, std_matrix<gen> & P, GIAC_CONTEXT);
+void hessenberg_ortho(std_matrix<gen> & H, std_matrix<gen> & P, GIAC_CONTEXT);
+```
+
+**Giac Command:** `_hessenberg`
+
+### Gram-Schmidt Orthogonalization
+
+```cpp
+matrice gramschmidt(const matrice & m, bool normalize, GIAC_CONTEXT);
+matrice gramschmidt(const matrice & m, matrice & r, bool normalize, GIAC_CONTEXT);
+```
+
+<ParamField path="m" type="const matrice &">
+  Input matrix with column vectors
+</ParamField>
+
+<ParamField path="normalize" type="bool">
+  Normalize the output vectors
+</ParamField>
+
+<ParamField path="r" type="matrice &">
+  R matrix from QR decomposition
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  Orthogonalized matrix
+</ResponseField>
+
+### LLL Algorithm
+
+```cpp
+matrice lll(const matrice & m, GIAC_CONTEXT);
+matrice lll(const matrice & M, matrice & L, matrice & O, matrice & A, GIAC_CONTEXT);
+```
+
+<ParamField path="m" type="const matrice &">
+  Input lattice basis
+</ParamField>
+
+<ResponseField name="return" type="matrice">
+  LLL-reduced basis
+</ResponseField>
+
+**Giac Command:** `_lll`
+
+## Integer Matrix Operations
+
+### Smith Normal Form
+
+```cpp
+bool ismith(const matrice & Aorig, matrice & U, matrice & A, matrice & V, GIAC_CONTEXT);
+```
+
+**Giac Command:** `_ismith`
+
+### Hermite Normal Form
+
+```cpp
+bool ihermite(const matrice & Aorig, matrice & U, matrice & A, GIAC_CONTEXT);
+```
+
+**Giac Command:** `_ihermite`
+
+## See Also
+
+- [Vector Operations](/api/linear/vectors) - Vector data structures and operations
+- [Gaussian Elimination](/api/linear/gaussian-elimination) - Row reduction algorithms

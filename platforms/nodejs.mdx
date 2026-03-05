@@ -1,0 +1,517 @@
+---
+title: Node.js Integration
+description: Use Giac computer algebra system in Node.js applications with native bindings
+icon: node-js
+---
+
+Giac provides native Node.js bindings that allow you to leverage powerful computer algebra capabilities in your JavaScript applications. The bindings are built using Node.js Native Addons (N-API).
+
+## Installation
+
+<Warning>
+The Node.js package is no longer actively updated but remains functional for existing projects.
+</Warning>
+
+Install the `giac` package from npm:
+
+```bash
+npm install giac
+```
+
+### Prerequisites
+
+To build the native bindings from source, you need:
+
+- **Node.js** 10.0 or higher
+- **C++ compiler** with C++11 support
+- **Python** 2.7 or 3.x (for node-gyp)
+- **GMP and MPFR** libraries
+
+<Tabs>
+  <Tab title="Linux">
+    ```bash
+    sudo apt-get install build-essential libgmp-dev libmpfr-dev
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```bash
+    brew install gmp mpfr
+    ```
+  </Tab>
+  <Tab title="Windows">
+    Install [windows-build-tools](https://www.npmjs.com/package/windows-build-tools):
+    ```bash
+    npm install --global windows-build-tools
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Start
+
+### Basic Usage
+
+Here's a simple example of evaluating mathematical expressions:
+
+```javascript
+const giac = require('giac');
+
+// Evaluate expressions
+console.log(giac.evaluate("expand((x+y)^3)"));
+// Output: x^3+y^3+3*x*y^2+3*x^2*y
+
+console.log(giac.evaluate("expand((x+y)^4)"));
+// Output: x^4+y^4+4*x*y^3+6*x^2*y^2+4*x^3*y
+
+console.log(giac.evaluate("2^50"));
+// Output: 1125899906842624
+```
+
+### Interactive REPL
+
+The package includes a command-line interface:
+
+```bash
+node nodegiac.js
+```
+
+This launches an interactive session:
+
+```
+This is a minimalist command line version of NodeGiac
+Enter expressions to evaluate
+Example: factor(x^4-1); simplify(sin(3x)/sin(x))
+int(1/(x^4-1)); int(1/(x^4+1)^4,x,0,inf)
+f(x):=sin(x^2); f'(2); f'(y)
+Press CTRL-D to stop
+
+1>> factor(x^4-1)
+1<< (x-1)*(x+1)*(x^2+1)
+```
+
+## API Reference
+
+### evaluate(expression)
+
+Evaluates a Giac expression and returns the result as a string.
+
+**Parameters:**
+- `expression` (string): The mathematical expression to evaluate
+
+**Returns:**
+- (string): The result of the evaluation
+
+**Examples:**
+
+<CodeGroup>
+```javascript Algebra
+const giac = require('giac');
+
+// Factor polynomials
+console.log(giac.evaluate("factor(x^4-1)"));
+// Output: (x-1)*(x+1)*(x^2+1)
+
+// Simplify expressions
+console.log(giac.evaluate("simplify(sin(3x)/sin(x))"));
+// Output: 3-4*sin(x)^2
+
+// GCD computation
+console.log(giac.evaluate("gcd(x^4-1,x^3-1)"));
+// Output: x-1
+```
+
+```javascript Calculus
+const giac = require('giac');
+
+// Indefinite integrals
+console.log(giac.evaluate("int(1/(x^4-1))"));
+
+// Definite integrals
+console.log(giac.evaluate("int(1/(x^4+1)^4,x,0,inf)"));
+
+// Limits
+console.log(giac.evaluate("limit(sin(x)/x,x=0)"));
+// Output: 1
+
+// Series expansions
+console.log(giac.evaluate("series(sin(x),x=0,5)"));
+```
+
+```javascript Differential Equations
+const giac = require('giac');
+
+// Solve equations
+console.log(giac.evaluate("solve(x^2-3*x+2=0)"));
+// Output: [1,2]
+
+// System of equations
+console.log(giac.evaluate("solve([x+y=1,x-y=3],[x,y])"));
+// Output: [2,-1]
+
+// Complex solutions
+console.log(giac.evaluate("csolve(x^2=2*i)"));
+```
+
+```javascript Functions
+const giac = require('giac');
+
+// Define a function
+console.log(giac.evaluate("f(x):=sin(x^2)"));
+
+// Evaluate function
+console.log(giac.evaluate("f(sqrt(pi))"));
+
+// Derivative with numeric value
+console.log(giac.evaluate("f'(2)"));
+
+// Derivative symbolic
+console.log(giac.evaluate("f'(y)"));
+// Output: 2*y*cos(y^2)
+```
+
+```javascript Linear Algebra
+const giac = require('giac');
+
+// Create matrix
+console.log(giac.evaluate("A:=[[1,2],[3,4]]"));
+
+// Matrix inverse
+console.log(giac.evaluate("inv(A)"));
+
+// Determinant
+console.log(giac.evaluate("det(A)"));
+// Output: -2
+
+// Eigenvalues
+console.log(giac.evaluate("eigenvalues(A)"));
+
+// Eigenvectors
+console.log(giac.evaluate("eigenvectors(A)"));
+
+// Access elements
+console.log(giac.evaluate("A[0,0]"));
+// Output: 1
+```
+</CodeGroup>
+
+## Building Native Bindings
+
+The native bindings are built using `binding.gyp` configuration:
+
+### Configuration
+
+```json
+{
+  "targets": [
+    {
+      "target_name": "giac",
+      "sources": [
+        "<!@(node -p \"require('fs').readdirSync('./src/giac/cpp/').map(f=>'src/giac/cpp/'+f).join(' ')\")",
+        "src/nodegiac/cpp/nodegiac.cc"
+      ],
+      "include_dirs": ["src/giac/headers"],
+      "defines": [
+        "GIAC_GGB",
+        "VERSION=\"1.2.3\"",
+        "IN_GIAC",
+        "HAVE_SYSCONF",
+        "HAVE_NO_HOME_DIRECTORY",
+        "TIMEOUT",
+        "HAVE_MPFR_1",
+        "HAVE_LIBMPFR"
+      ]
+    }
+  ]
+}
+```
+
+### Platform-Specific Settings
+
+<Tabs>
+  <Tab title="Linux">
+    ```json
+    "cflags_cc": ["-fexceptions", "-fpermissive"],
+    "cflags_cc!": ["-fno-rtti"],
+    "link_settings": {
+      "libraries": ["-lgmp", "-lmpfr"]
+    },
+    "defines+": ["HAVE_LIBPTHREAD"]
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```json
+    "defines+": [
+      "NO_STDEXCEPT",
+      "APPLE_SMART",
+      "NO_GETTEXT",
+      "CLANG"
+    ],
+    "link_settings": {
+      "libraries": ["-lgmp", "-lmpfr"]
+    },
+    "xcode_settings": {
+      "GCC_ENABLE_CPP_RTTI": "YES",
+      "OTHER_CPLUSPLUSFLAGS": ["-std=c++11", "-stdlib=libc++"]
+    }
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```json
+    "defines+": [
+      "__VISUALC__",
+      "HAVE_NO_SYS_TIMES_H",
+      "HAVE_NO_PWD_H",
+      "MS_SMART"
+    ],
+    "link_settings": {
+      "libraries": ["-lmpir.lib", "-lmpfr.lib"]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Build from Source
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd giac
+
+# Install dependencies
+npm install
+
+# Build native addon
+npm run build
+```
+
+## Implementation Details
+
+The Node.js binding is implemented using V8 and N-API:
+
+```cpp
+#include <node.h>
+#include <v8.h>
+#include "giac.h"
+
+using namespace v8;
+using namespace giac;
+
+context ct;
+
+void Evaluate(const v8::FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  Local<Context> context = isolate->GetCurrentContext();
+  HandleScope scope(isolate);
+  std::string line_out;
+
+  // Convert JS string to C++ string
+  v8::String::Utf8Value param1(isolate, 
+    args[0]->ToString(context).ToLocalChecked());
+  std::string line_in = std::string(*param1);
+
+  // Evaluate using Giac
+  gen g = gen(line_in, &ct);
+  try {
+    line_out = giac::print(giac::eval(g, &ct), &ct);
+  } catch (runtime_error & err) {
+    line_out = std::string("ERROR: ") + err.what();
+  }
+
+  // Return result to JavaScript
+  Local<Value> line_out_v8 = String::NewFromUtf8(
+    isolate, line_out.c_str(), 
+    NewStringType::kNormal).ToLocalChecked();
+  args.GetReturnValue().Set(line_out_v8);
+}
+
+NODE_MODULE(giac, Initialize)
+```
+
+## Creating a REPL
+
+Here's how to create an interactive REPL using Node.js readline:
+
+```javascript
+const giac = require('giac');
+const readline = require('readline');
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false
+});
+
+console.log("Giac REPL - Enter expressions to evaluate");
+console.log("Press CTRL-D to exit\n");
+
+let lineNumber = 1;
+
+rl.on('line', function(line) {
+  // Echo input
+  console.log(`${lineNumber}>> ${line}`);
+  
+  // Evaluate expression
+  const result = giac.evaluate(line);
+  console.log(`${lineNumber}<< ${result}`);
+  
+  lineNumber++;
+});
+
+rl.on('close', function() {
+  console.log("\nGoodbye!");
+  process.exit(0);
+});
+```
+
+## GeoGebra Mode
+
+Enable GeoGebra-specific features:
+
+```javascript
+const giac = require('giac');
+
+// Enable GeoGebra mode
+console.log(giac.evaluate('caseval("init geogebra")'));
+// Output: "geogebra mode on"
+
+// Lists become sets in GeoGebra mode
+console.log(giac.evaluate('[1]'));
+// Output: {1}
+
+// High precision evaluation
+console.log(giac.evaluate('evalf(7,15)'));
+// Output: 7.00000000000000
+
+// Disable GeoGebra mode
+console.log(giac.evaluate('caseval("close geogebra")'));
+// Output: "geogebra mode off"
+```
+
+## Advanced Usage
+
+### Processing Multiple Expressions
+
+```javascript
+const giac = require('giac');
+
+const expressions = [
+  'factor(x^4-1)',
+  'solve(x^2-3*x+2=0)',
+  'int(sin(x))',
+  'limit(sin(x)/x,x=0)'
+];
+
+expressions.forEach((expr, index) => {
+  console.log(`${index + 1}. ${expr}`);
+  console.log(`   => ${giac.evaluate(expr)}\n`);
+});
+```
+
+### Error Handling
+
+```javascript
+const giac = require('giac');
+
+function safeEvaluate(expression) {
+  try {
+    const result = giac.evaluate(expression);
+    
+    // Check for error prefix
+    if (result.startsWith('ERROR:')) {
+      throw new Error(result);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`Failed to evaluate "${expression}":`, error.message);
+    return null;
+  }
+}
+
+console.log(safeEvaluate('factor(x^2-1)'));  // Success
+console.log(safeEvaluate('invalid syntax'));  // Error
+```
+
+### Integration with Express
+
+```javascript
+const express = require('express');
+const giac = require('giac');
+
+const app = express();
+app.use(express.json());
+
+app.post('/evaluate', (req, res) => {
+  const { expression } = req.body;
+  
+  if (!expression) {
+    return res.status(400).json({ error: 'Expression required' });
+  }
+  
+  try {
+    const result = giac.evaluate(expression);
+    res.json({ expression, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Giac API listening on port 3000');
+});
+```
+
+## Performance Tips
+
+- **Batch expressions**: Process multiple expressions in sequence to reuse the Giac context
+- **Cache results**: Store frequently-used computation results
+- **Timeouts**: Long computations may block the Node.js event loop
+- **Worker threads**: Consider using worker threads for CPU-intensive operations
+
+<Warning>
+Giac computations run on the main thread and may block the event loop for complex expressions. Consider implementing timeouts or using worker threads for production applications.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails with 'gmp.h not found'">
+    Install GMP development headers:
+    
+    **Linux:** `sudo apt-get install libgmp-dev`
+    
+    **macOS:** `brew install gmp`
+    
+    **Windows:** Ensure MPIR libraries are in your PATH
+  </Accordion>
+
+  <Accordion title="Module not found after installation">
+    Try rebuilding the native addon:
+    ```bash
+    npm rebuild giac
+    ```
+  </Accordion>
+
+  <Accordion title="Segmentation fault on evaluation">
+    This usually indicates a memory issue. Make sure:
+    - You're using compatible Node.js and V8 versions
+    - GMP/MPFR libraries are correctly installed
+    - The expression syntax is valid
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="C++ Integration" icon="code" href="/platforms/cpp">
+    Learn about the underlying C++ library
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/overview">
+    Explore available Giac functions
+  </Card>
+  <Card title="WebAssembly" icon="globe" href="/platforms/webassembly">
+    Use Giac in web browsers
+  </Card>
+  <Card title="Algebra API" icon="lightbulb" href="/api/algebra/polynomials">
+    Explore polynomial and algebra functions
+  </Card>
+</CardGroup>

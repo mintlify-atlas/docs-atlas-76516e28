@@ -1,0 +1,472 @@
+---
+title: Cross-Compilation
+description: Guide for cross-compiling Giac for Android and other platforms
+---
+
+This guide covers cross-compilation of Giac for various target platforms, with a focus on Android cross-compilation from Linux.
+
+## Android Cross-Compilation
+
+This tutorial explains how to create Linux → Android cross-compilers and compile the Giac library for Android. The steps have been tested on Kubuntu 14.04, Ubuntu 14.10, and Ubuntu 16.04.
+
+### Supported Android Architectures
+
+Giac supports cross-compilation for four Android architectures:
+
+| Architecture | ABI Name | Host Triple | Description |
+|--------------|----------|-------------|-------------|
+| ARM | armeabi-v7a | arm-linux-androideabi | 32-bit ARM |
+| x86 | x86 | i686-linux-android | 32-bit Intel |
+| x86_64 | x86_64 | x86_64-linux-android | 64-bit Intel |
+| ARM64 | arm64-v8a | aarch64-linux-android | 64-bit ARM |
+
+## Prerequisites
+
+### Download Crystax NDK
+
+<Note>
+Giac uses Crystax NDK 10.2.1 for Android cross-compilation. This is a modified Android NDK with better C++ support.
+</Note>
+
+<Steps>
+  <Step title="Download Crystax NDK 10.2.1">
+    Download from [crystax.net](https://crystax.net/en/download)
+    
+    Required disk space:
+    - Download: ~2 GB
+    - Extracted: ~8 GB
+  </Step>
+
+  <Step title="Extract to android-sdks directory">
+    ```bash
+    mkdir -p ~/android-sdks
+    cd ~/Downloads
+    tar -xf crystax-ndk-10.2.1-linux-x86_64.tar.xz -C ~/android-sdks/
+    ```
+  </Step>
+
+  <Step title="Set environment variables">
+    ```bash
+    export NDK_DIR=~/android-sdks/crystax-ndk-10.2.1
+    export CC_DIR=~/cross-compilers
+    ```
+  </Step>
+</Steps>
+
+## Creating Standalone Toolchains
+
+For each target architecture, you need to create a standalone toolchain.
+
+### ARM (32-bit)
+
+<Steps>
+  <Step title="Set architecture variables">
+    ```bash
+    export ARCH=arm
+    export HOST=arm-linux-androideabi
+    ```
+  </Step>
+
+  <Step title="Create standalone toolchain">
+    ```bash
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    ```
+    
+    This creates a self-contained toolchain in `~/cross-compilers/arm/`.
+  </Step>
+
+  <Step title="Add to PATH">
+    ```bash
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+  </Step>
+
+  <Step title="Build GMP and MPFR (Optional)">
+    If you need to rebuild GMP and MPFR (versions in `src/jni/prebuilt/android/README.txt`):
+    
+    ```bash
+    # For GMP:
+    cd /path/to/gmp-source
+    CFLAGS="-fPIC" ./configure \
+      --host=$HOST \
+      --prefix=$CC_DIR/$ARCH/sysroot/usr \
+      --disable-assembly
+    make && make install
+    
+    # For MPFR:
+    cd /path/to/mpfr-source
+    CFLAGS="-fPIC" ./configure \
+      --host=$HOST \
+      --prefix=$CC_DIR/$ARCH/sysroot/usr \
+      --disable-assembly \
+      --with-gmp=$CC_DIR/$ARCH/sysroot/usr
+    make && make install
+    ```
+    
+    <Note>
+    This step requires additional 300-500 MB disk space per architecture.
+    </Note>
+  </Step>
+
+  <Step title="Verify libraries">
+    Static and shared libraries are located in:
+    ```bash
+    ls $CC_DIR/$ARCH/sysroot/usr/lib
+    # Should contain: libgmp.a, libgmp.so, libmpfr.a, libmpfr.so
+    ```
+  </Step>
+</Steps>
+
+### x86 (32-bit)
+
+Repeat the process with different architecture settings:
+
+```bash
+export ARCH=x86
+export HOST=i686-linux-android
+
+$NDK_DIR/build/tools/make-standalone-toolchain.sh \
+  --ndk-dir=$NDK_DIR \
+  --arch=$ARCH \
+  --platform=android-21 \
+  --install-dir=$CC_DIR/$ARCH
+
+export PATH=$CC_DIR/$ARCH/bin/:$PATH
+```
+
+### x86_64 (64-bit Intel)
+
+```bash
+export ARCH=x86_64
+export HOST=x86_64-linux-android
+
+$NDK_DIR/build/tools/make-standalone-toolchain.sh \
+  --ndk-dir=$NDK_DIR \
+  --arch=$ARCH \
+  --platform=android-21 \
+  --install-dir=$CC_DIR/$ARCH
+
+export PATH=$CC_DIR/$ARCH/bin/:$PATH
+```
+
+### ARM64 (64-bit ARM)
+
+```bash
+export ARCH=arm64
+export HOST=aarch64-linux-android
+
+$NDK_DIR/build/tools/make-standalone-toolchain.sh \
+  --ndk-dir=$NDK_DIR \
+  --arch=$ARCH \
+  --platform=android-21 \
+  --install-dir=$CC_DIR/$ARCH
+
+export PATH=$CC_DIR/$ARCH/bin/:$PATH
+```
+
+## Compiling Giac for Android
+
+Once the toolchains are set up:
+
+<Steps>
+  <Step title="Ensure PATH is set">
+    ```bash
+    export PATH=$CC_DIR/arm/bin/:$CC_DIR/x86/bin/:$CC_DIR/x86_64/bin/:$CC_DIR/arm64/bin/:$PATH
+    ```
+    
+    Or set individually for each architecture as shown above.
+  </Step>
+
+  <Step title="Build Android AAR package">
+    ```bash
+    ../gradlew androidAar
+    ```
+    
+    This will:
+    - Compile Giac for all four Android architectures
+    - Create JNI libraries (libjavagiac.so) for each architecture
+    - Package everything into an Android Archive (.aar) file
+  </Step>
+
+  <Step title="Locate output">
+    The compiled libraries will be copied to:
+    ```
+    giac-android/src/main/jniLibs/
+    ├── armeabi-v7a/libjavagiac.so
+    ├── x86/libjavagiac.so
+    ├── x86_64/libjavagiac.so
+    └── arm64-v8a/libjavagiac.so
+    ```
+    
+    The final .aar package will be in:
+    ```
+    giac-android/build/outputs/aar/
+    ```
+  </Step>
+</Steps>
+
+## Gradle-Based Android Cross-Compilation
+
+The build.gradle file configures cross-compilation for Android:
+
+### Toolchain Configuration
+
+```groovy build.gradle
+android(Clang) {
+    target('androideabi') {
+        cppCompiler.executable 'armv7a-linux-androideabi35-clang++'
+        linker.executable 'armv7a-linux-androideabi35-clang++'
+    }
+    target('androidx86') {
+        cppCompiler.executable 'i686-linux-android35-clang++'
+        linker.executable 'i686-linux-android35-clang++'
+    }
+    target('androidx86_64') {
+        cppCompiler.executable 'x86_64-linux-android35-clang++'
+        linker.executable 'x86_64-linux-android35-clang++'
+    }
+    target('androidarm64') {
+        cppCompiler.executable 'aarch64-linux-android35-clang++'
+        linker.executable 'aarch64-linux-android35-clang++'
+    }
+}
+```
+
+<Warning>
+Ensure the cross-compiler executables are in your PATH. The build will fail if these compilers cannot be found.
+</Warning>
+
+### Build Individual Architectures
+
+<CodeGroup>
+```bash ARM (32-bit)
+../gradlew javagiacAndroideabiSharedLibrary
+```
+
+```bash x86 (32-bit)
+../gradlew javagiacAndroidx86SharedLibrary
+```
+
+```bash x86_64 (64-bit)
+../gradlew javagiacAndroidx86_64SharedLibrary
+```
+
+```bash ARM64 (64-bit)
+../gradlew javagiacAndroidarm64SharedLibrary
+```
+</CodeGroup>
+
+## Android-Specific Compilation Settings
+
+### Preprocessor Definitions
+
+| Definition | Purpose |
+|------------|----------|
+| `HAVE_UNISTD_H` | POSIX unistd.h available |
+| `NO_BSD` | BSD extensions not available |
+| `HAVE_NO_HOME_DIRECTORY` | No home directory access |
+| `GIAC_GGB` | GeoGebra integration |
+
+### Compiler Flags
+
+```bash
+-fno-strict-aliasing    # Prevent strict aliasing issues
+-DPIC                   # Position independent code (define)
+-fPIC                   # Position independent code (flag)
+-iquote [headers]       # Override headers with Android-specific versions
+```
+
+<Note>
+The `-fPIC` flag is critical for Android 6.0+, which doesn't load libraries with text relocations.
+</Note>
+
+### Android-Specific Headers
+
+Custom Android headers override standard headers:
+
+```
+src/giac/headers/android/
+├── arm/
+├── x86/
+├── x86_64/
+└── arm64/
+```
+
+These are included with:
+```bash
+-iquote src/giac/headers/android/${architecture}
+```
+
+## Troubleshooting
+
+### SDK Directory Not Found
+
+Error:
+```
+SDK location not found. Define location with sdk.dir in the local.properties file
+```
+
+Solution: Create `local.properties`:
+```properties
+sdk.dir=/path/to/android/sdk
+```
+
+Or set environment variable:
+```bash
+export ANDROID_SDK=/path/to/android/sdk
+```
+
+### Compiler Not in PATH
+
+Error:
+```
+Could not find armv7a-linux-androideabi35-clang++
+```
+
+Solution:
+```bash
+export PATH=$CC_DIR/arm/bin/:$PATH
+which arm-linux-androideabi-clang++
+```
+
+### Missing libcrystax
+
+Error:
+```
+error while loading shared libraries: libcrystax.so
+```
+
+Solution: Crystax libraries should be in the toolchain. Verify:
+```bash
+ls $CC_DIR/arm/sysroot/usr/lib/libcrystax.so
+```
+
+### Text Relocations Error
+
+Error when loading library on Android:
+```
+java.lang.UnsatisfiedLinkError: text relocations
+```
+
+Solution: Ensure `-fPIC` flag is used:
+```bash
+cppCompiler.args '-fPIC'
+```
+
+### Out of Memory During Build
+
+Error:
+```
+GC overhead limit exceeded
+```
+
+Solution: Increase Gradle heap size in `gradle.properties`:
+```properties
+org.gradle.jvmargs=-Xmx4096m
+```
+
+## Cleanup
+
+After successful build, you can save disk space:
+
+```bash
+# Remove NDK (saves ~8 GB)
+rm -rf $NDK_DIR
+
+# Keep toolchains in $CC_DIR for future builds
+```
+
+## iOS Cross-Compilation
+
+Giac also supports cross-compilation for iOS from macOS.
+
+### iOS Device (ARM64)
+
+```bash
+../gradlew giacIos_arm64StaticLibrary
+```
+
+### iPhone Simulator
+
+<CodeGroup>
+```bash x86_64 Simulator
+../gradlew giacIphonesimulator_x86_64StaticLibrary
+```
+
+```bash ARM64 Simulator
+../gradlew giacIphonesimulator_arm64StaticLibrary
+```
+</CodeGroup>
+
+### Configuration
+
+The iOS cross-compilation uses:
+
+```bash Compiler Configuration
+-isysroot [SDK path]              # iOS SDK path
+-target [arch]-apple-ios[version] # Target specification
+-miphoneos-version-min=9.0        # Minimum iOS version
+-fembed-bitcode                   # Embed bitcode for App Store
+-stdlib=libc++                    # C++ standard library
+```
+
+SDK paths are detected via `xcrun`:
+```bash
+xcrun --sdk iphoneos --show-sdk-path
+xcrun --sdk iphonesimulator --show-sdk-path
+```
+
+## Prebuilt Libraries Location
+
+Giac includes prebuilt GMP and MPFR libraries for all supported platforms:
+
+```
+src/jni/prebuilt/
+├── android/
+│   ├── arm/
+│   ├── arm64/
+│   ├── x86/
+│   └── x86_64/
+├── ios/
+│   └── arm64/
+├── iphonesimulator/
+│   ├── arm64/
+│   └── x86_64/
+├── maccatalyst/
+│   ├── arm64/
+│   └── x86_64/
+├── linux/
+│   └── x86-64/
+├── windows/
+│   ├── clang64/
+│   └── clang32/
+└── osx/
+    ├── x86_64/
+    └── arm64/
+```
+
+Each directory contains:
+- `libgmp.a` - Static GMP library
+- `libmpfr.a` - Static MPFR library
+
+## Using Modern Android NDK
+
+<Warning>
+The instructions above use Crystax NDK 10.2.1. For modern Android NDK (r21+), the process differs. The toolchain executables have different names and locations.
+</Warning>
+
+For modern NDK:
+1. Use standalone toolchain from `$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/`
+2. Compiler names: `armv7a-linux-androideabi21-clang++`, etc.
+3. No separate toolchain creation step required
+
+## Additional Resources
+
+- Android NDK documentation: [developer.android.com/ndk](https://developer.android.com/ndk)
+- Crystax NDK: [crystax.net](https://crystax.net/)
+- GMP manual: [gmplib.org](https://gmplib.org/)
+- MPFR manual: [mpfr.org](https://www.mpfr.org/)

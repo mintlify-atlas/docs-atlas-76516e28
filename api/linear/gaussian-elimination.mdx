@@ -1,0 +1,605 @@
+---
+title: Gaussian Elimination
+description: Row reduction, system solving, and related algorithms in Giac
+---
+
+## Overview
+
+Giac provides comprehensive row reduction algorithms for solving linear systems, computing reduced row echelon form (RREF), and related operations. The core function is `mrref` with various algorithm options.
+
+## Algorithm Types
+
+```cpp
+enum matrix_algorithms {
+  RREF_GAUSS_JORDAN = 0,
+  RREF_GUESS = 1,
+  RREF_BAREISS = 2,
+  RREF_MODULAR = 3,
+  RREF_PADIC = 4,
+  RREF_LAGRANGE = 5
+};
+```
+
+<ParamField path="RREF_GAUSS_JORDAN" type="0">
+  Standard Gauss-Jordan elimination
+</ParamField>
+
+<ParamField path="RREF_GUESS" type="1">
+  Automatic algorithm selection (recommended)
+</ParamField>
+
+<ParamField path="RREF_BAREISS" type="2">
+  Bareiss algorithm (fraction-free)
+</ParamField>
+
+<ParamField path="RREF_MODULAR" type="3">
+  Modular algorithm
+</ParamField>
+
+<ParamField path="RREF_PADIC" type="4">
+  p-adic algorithm
+</ParamField>
+
+<ParamField path="RREF_LAGRANGE" type="5">
+  Lagrange interpolation
+</ParamField>
+
+## Core Row Reduction
+
+### mrref
+
+Compute reduced row echelon form with extensive options.
+
+```cpp
+int mrref(const matrice & a, matrice & res, vecteur & pivots, gen & det,
+          int l, int lmax, int c, int cmax,
+          int fullreduction, int dont_swap_below, bool convert_internal,
+          int algorithm, int rref_or_det_or_lu, GIAC_CONTEXT);
+
+int mrref(const matrice & a, matrice & res, std::vector<int> & permutation,
+          vecteur & pivots, gen & det,
+          int l, int lmax, int c, int cmax,
+          int fullreduction, int dont_swap_below, bool convert_internal,
+          int algorithm, int rref_or_det_or_lu, GIAC_CONTEXT);
+
+bool mrref(const matrice & a, matrice & res, vecteur & pivots, gen & det, GIAC_CONTEXT);
+```
+
+#### Parameters
+
+<ParamField path="a" type="const matrice &">
+  Input matrix
+</ParamField>
+
+<ParamField path="res" type="matrice &">
+  Output reduced matrix
+</ParamField>
+
+<ParamField path="pivots" type="vecteur &">
+  Output vector of pivot positions
+</ParamField>
+
+<ParamField path="det" type="gen &">
+  Output determinant (if computing)
+</ParamField>
+
+<ParamField path="l" type="int">
+  Starting row (0-indexed)
+</ParamField>
+
+<ParamField path="lmax" type="int">
+  Ending row (exclusive)
+</ParamField>
+
+<ParamField path="c" type="int">
+  Starting column (0-indexed)
+</ParamField>
+
+<ParamField path="cmax" type="int">
+  Ending column (exclusive)
+</ParamField>
+
+<ParamField path="fullreduction" type="int">
+  - 0: Reduction below diagonal only
+  - non-zero: Full reduction (above and below diagonal)
+</ParamField>
+
+<ParamField path="dont_swap_below" type="int">
+  For rows < this value, search for pivot in the row instead of column (no row swaps)
+</ParamField>
+
+<ParamField path="convert_internal" type="bool">
+  Convert to rational fractions internally
+</ParamField>
+
+<ParamField path="algorithm" type="int">
+  Algorithm selection (see matrix_algorithms enum)
+</ParamField>
+
+<ParamField path="rref_or_det_or_lu" type="int">
+  - 0: RREF computation
+  - 1: Determinant computation
+  - 2: LU decomposition
+  - 3: LU without permutation
+</ParamField>
+
+<ResponseField name="return" type="int">
+  - 0: Failure
+  - 1: Success
+  - 2: Success with inversion (no need to remove identity)
+</ResponseField>
+
+#### Simple Usage
+
+```cpp
+matrice A = ...; // Input matrix
+matrice R;
+vecteur pivots;
+gen det;
+
+bool success = mrref(A, R, pivots, det, contextptr);
+```
+
+**Giac Command:** `_rref`
+
+### modrref
+
+Modular row reduction.
+
+```cpp
+bool modrref(const matrice & a, matrice & res, vecteur & pivots, gen & det,
+             int l, int lmax, int c, int cmax,
+             int fullreduction, int dont_swap_below, 
+             const gen & modulo, bool ckprime, int rref_or_det_or_lu);
+
+bool modrref(const matrice & a, matrice & res, vecteur & pivots, gen & det,
+             const gen & modulo);
+```
+
+<ParamField path="modulo" type="const gen &">
+  Modulo value for arithmetic
+</ParamField>
+
+<ParamField path="ckprime" type="bool">
+  Check if modulo is prime
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if reduction successful
+</ResponseField>
+
+## Specialized Row Reduction
+
+### smallmodrref
+
+Efficient integer modular RREF for small moduli.
+
+```cpp
+void smallmodrref(int nthreads, std::vector<std::vector<int>> & N,
+                  vecteur & pivots, std::vector<int> & permutation,
+                  std::vector<int> & maxrankcols, longlong & idet,
+                  int l, int lmax, int c, int cmax,
+                  int fullreduction, int dont_swap_below, int modulo,
+                  int rref_or_det_or_lu, bool reset,
+                  smallmodrref_temp_t * workptr, bool allow_block, int carac);
+```
+
+<ParamField path="nthreads" type="int">
+  Number of threads for parallel computation
+</ParamField>
+
+<ParamField path="N" type="std::vector<std::vector<int>> &">
+  Input/output integer matrix
+</ParamField>
+
+<ParamField path="modulo" type="int">
+  Modulo value (must be < 2^31)
+</ParamField>
+
+<ParamField path="allow_block" type="bool">
+  Enable block algorithm optimization
+</ParamField>
+
+### doublerref
+
+Floating-point RREF.
+
+```cpp
+void doublerref(matrix_double & N, vecteur & pivots,
+                std::vector<int> & permutation, std::vector<int> & maxrankcols,
+                double & idet, int l, int lmax, int c, int cmax,
+                int fullreduction, int dont_swap_below,
+                int rref_or_det_or_lu, double eps);
+```
+
+<ParamField path="N" type="matrix_double &">
+  Input/output double-precision matrix
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Tolerance for zero detection
+</ParamField>
+
+## Linear Combinations
+
+### linear_combination
+
+Compute linear combination of two vectors.
+
+```cpp
+void linear_combination(const gen & c1, const vecteur & v1,
+                       const gen & c2, const vecteur & v2,
+                       const gen & c, const gen & cinv,
+                       vecteur & v, double eps, int cstart = 0);
+```
+
+<ParamField path="c1" type="const gen &">
+  Coefficient for first vector
+</ParamField>
+
+<ParamField path="v1" type="const vecteur &">
+  First vector
+</ParamField>
+
+<ParamField path="c2" type="const gen &">
+  Coefficient for second vector
+</ParamField>
+
+<ParamField path="v2" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ParamField path="c" type="const gen &">
+  Scaling factor
+</ParamField>
+
+<ParamField path="cinv" type="const gen &">
+  Inverse of c (for optimization)
+</ParamField>
+
+<ParamField path="v" type="vecteur &">
+  Output result vector
+</ParamField>
+
+<ParamField path="eps" type="double">
+  Tolerance: values with ||v|| < eps are replaced by 0
+</ParamField>
+
+<ParamField path="cstart" type="int" default="0">
+  Starting index for operation
+</ParamField>
+
+### modlinear_combination
+
+Modular linear combination.
+
+```cpp
+void modlinear_combination(vecteur & v1, const gen & c2, const vecteur & v2,
+                          const gen & modulo, int cstart, int cend = 0);
+
+void modlinear_combination(std::vector<int> & v1, int c2,
+                          const std::vector<int> & v2, int modulo,
+                          int cstart, int cend, bool pseudo);
+```
+
+<ParamField path="v1" type="vecteur &">
+  First vector (modified in place)
+</ParamField>
+
+<ParamField path="c2" type="const gen & | int">
+  Coefficient for second vector
+</ParamField>
+
+<ParamField path="v2" type="const vecteur &">
+  Second vector
+</ParamField>
+
+<ParamField path="modulo" type="const gen & | int">
+  Modulo value
+</ParamField>
+
+<ParamField path="cstart" type="int">
+  Starting index
+</ParamField>
+
+<ParamField path="cend" type="int" default="0">
+  Ending index (0 means end of vector)
+</ParamField>
+
+## System Solving
+
+### p-adic Linear System Solving
+
+#### padic_linsolve
+
+Solve a linear system using p-adic methods.
+
+```cpp
+int padic_linsolve(const matrice & a, const vecteur & b, vecteur & res,
+                   gen & p, gen & det_mod_p, gen & h2,
+                   unsigned reconstruct = 0, int maxtry = 4);
+```
+
+<ParamField path="a" type="const matrice &">
+  Coefficient matrix (integer entries)
+</ParamField>
+
+<ParamField path="b" type="const vecteur &">
+  Right-hand side vector (integer entries)
+</ParamField>
+
+<ParamField path="res" type="vecteur &">
+  Output solution vector
+</ParamField>
+
+<ParamField path="p" type="gen &">
+  Prime for p-adic computation
+</ParamField>
+
+<ParamField path="det_mod_p" type="gen &">
+  Determinant mod p
+</ParamField>
+
+<ParamField path="h2" type="gen &">
+  Auxiliary parameter
+</ParamField>
+
+<ParamField path="reconstruct" type="unsigned" default="0">
+  Rational reconstruction parameter
+</ParamField>
+
+<ParamField path="maxtry" type="int" default="4">
+  Maximum number of attempts
+</ParamField>
+
+<ResponseField name="return" type="int">
+  - 0: No invertible element found
+  - -1: Determinant is zero (no solution)
+  - 1: Success
+</ResponseField>
+
+**Giac Command:** `_padic_linsolve`
+
+#### padic_linsolve_prepare
+
+Prepare for solving non-Cramer systems.
+
+```cpp
+int padic_linsolve_prepare(const matrice & a, gen & p,
+                           std::vector<int> & ranklines,
+                           std::vector<int> & rankcols,
+                           matrice & asub, matrice & ainv,
+                           vecteur & compat, vecteur & kernel);
+```
+
+<ParamField path="ranklines" type="std::vector<int> &">
+  Output: row indices for maximal rank submatrix
+</ParamField>
+
+<ParamField path="rankcols" type="std::vector<int> &">
+  Output: column indices for maximal rank submatrix
+</ParamField>
+
+<ParamField path="asub" type="matrice &">
+  Output: maximal rank submatrix
+</ParamField>
+
+<ParamField path="ainv" type="matrice &">
+  Output: inverse of asub mod p
+</ParamField>
+
+<ParamField path="compat" type="vecteur &">
+  Output: compatibility conditions
+</ParamField>
+
+<ParamField path="kernel" type="vecteur &">
+  Output: kernel basis
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Rank of matrix, or -1 on failure
+</ResponseField>
+
+#### padic_linsolve_solve
+
+Solve using prepared system.
+
+```cpp
+bool padic_linsolve_solve(const matrice & a, const gen & p,
+                          const std::vector<int> & ranklines,
+                          const std::vector<int> & rankcols,
+                          const matrice & asub, const matrice & ainv,
+                          const vecteur & compat, const vecteur & b,
+                          vecteur & sol);
+```
+
+### Indefinite System Solving
+
+```cpp
+bool solve_indef(matrice & A, const vecteur * b, vecteur & x,
+                 int * p, int * n, int * z, GIAC_CONTEXT);
+```
+
+<ParamField path="A" type="matrice &">
+  System matrix (LDL factorization)
+</ParamField>
+
+<ParamField path="b" type="const vecteur *">
+  Right-hand side
+</ParamField>
+
+<ParamField path="x" type="vecteur &">
+  Output solution
+</ParamField>
+
+<ParamField path="p" type="int *">
+  Number of positive eigenvalues
+</ParamField>
+
+<ParamField path="n" type="int *">
+  Number of negative eigenvalues
+</ParamField>
+
+<ParamField path="z" type="int *">
+  Number of zero eigenvalues
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if solve successful
+</ResponseField>
+
+## Utility Functions
+
+### mdividebypivot
+
+Divide matrix rows by their pivot elements.
+
+```cpp
+void mdividebypivot(matrice & a, int lastcol = -1);
+void mdividebypivot(matrice & a, int lastcol, GIAC_CONTEXT);
+```
+
+<ParamField path="a" type="matrice &">
+  Matrix to modify (in-place)
+</ParamField>
+
+<ParamField path="lastcol" type="int" default="-1">
+  - -1: Divide last column
+  - -2: Do not divide last column
+  - ≥0: Stop dividing at this column
+</ParamField>
+
+### add_identity
+
+Append identity matrix to the right.
+
+```cpp
+void add_identity(matrice & arref);
+void add_identity(std::vector<std::vector<int>> & arref);
+```
+
+<ParamField path="arref" type="matrice &">
+  Matrix to augment (modified in-place)
+</ParamField>
+
+### remove_identity
+
+Remove identity matrix from augmented result.
+
+```cpp
+bool remove_identity(matrice & res);
+bool remove_identity(std::vector<std::vector<int>> & res, int modulo);
+```
+
+<ParamField path="res" type="matrice &">
+  Augmented matrix (modified in-place)
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  true if identity was found and removed
+</ResponseField>
+
+## Quadratic Forms (gauss.h)
+
+### gauss
+
+Gaussian reduction of quadratic forms.
+
+```cpp
+vecteur gauss(const gen & q, const vecteur & x, GIAC_CONTEXT);
+vecteur gauss(const gen & q, const vecteur & x, vecteur & D,
+              vecteur & U, vecteur & P, GIAC_CONTEXT);
+```
+
+<ParamField path="q" type="const gen &">
+  Quadratic form (symbolic expression)
+</ParamField>
+
+<ParamField path="x" type="const vecteur &">
+  Vector of variables
+</ParamField>
+
+<ParamField path="D" type="vecteur &">
+  Output diagonal coefficients
+</ParamField>
+
+<ParamField path="U" type="vecteur &">
+  Output transformation matrix
+</ParamField>
+
+<ParamField path="P" type="vecteur &">
+  Output change of variables
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Reduced quadratic form data
+</ResponseField>
+
+**Giac Command:** `_gauss`
+
+### quad
+
+Find matrix of a quadratic form.
+
+```cpp
+vecteur quad(int & b, const gen & q, const vecteur & x, GIAC_CONTEXT);
+```
+
+<ParamField path="b" type="int &">
+  Output: form degree (2 if purely quadratic, 0/1/3 if contains terms of other degrees)
+</ParamField>
+
+<ParamField path="q" type="const gen &">
+  Symbolic quadratic expression
+</ParamField>
+
+<ParamField path="x" type="const vecteur &">
+  Variables
+</ParamField>
+
+<ResponseField name="return" type="vecteur">
+  Matrix representation of quadratic form
+</ResponseField>
+
+### q2a and a2q
+
+Convert between quadratic forms and matrices.
+
+```cpp
+gen _q2a(const gen & args, GIAC_CONTEXT);  // quadratic form to matrix
+gen _a2q(const gen & args, GIAC_CONTEXT);  // matrix to quadratic form
+```
+
+**Giac Commands:** `_q2a`, `_a2q`
+
+## Conic Sections
+
+### conique_reduite
+
+Reduce a conic equation to standard form.
+
+```cpp
+int conique_reduite(const gen & equation_conique,
+                    const gen & pointsurconique,
+                    const vecteur & nom_des_variables,
+                    gen & x0, gen & y0, vecteur & V1, vecteur & V2,
+                    gen & propre, gen & equation_reduite,
+                    vecteur & param_curves, gen & ratparam,
+                    bool numeric, GIAC_CONTEXT,
+                    gen * aptr = 0, gen * bptr = 0);
+```
+
+<ResponseField name="return" type="int">
+  - 0: Not a conic
+  - Less than 0: Not a proper conic
+  - 2: Parabola
+  - 3: Ellipse
+  - 4: Hyperbola
+</ResponseField>
+
+**Giac Command:** `_conique_reduite`
+
+## See Also
+
+- [Vector Operations](/api/linear/vectors) - Vector arithmetic and utilities
+- [Matrix Operations](/api/linear/matrices) - Higher-level matrix operations

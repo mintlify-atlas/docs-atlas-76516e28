@@ -1,0 +1,215 @@
+---
+title: "Derivative Functions"
+description: "Functions for computing derivatives, gradients, and partial derivatives"
+---
+
+## Overview
+
+Giac provides a comprehensive set of functions for symbolic differentiation, including ordinary derivatives, partial derivatives, gradients, and implicit differentiation.
+
+## Core Functions
+
+### derive
+
+Compute the derivative of an expression with respect to a variable.
+
+```cpp
+gen derive(const gen & e, const identificateur & i, GIAC_CONTEXT);
+gen derive(const gen & e, const gen & vars, GIAC_CONTEXT);
+gen derive(const gen & e, const gen & vars, const gen & nderiv, GIAC_CONTEXT);
+```
+
+<ParamField path="e" type="gen" required>
+  The expression to differentiate
+</ParamField>
+
+<ParamField path="i" type="identificateur">
+  The variable to differentiate with respect to (single variable)
+</ParamField>
+
+<ParamField path="vars" type="gen">
+  Variable or list of variables for differentiation
+</ParamField>
+
+<ParamField path="nderiv" type="gen">
+  Order of derivative (for higher-order derivatives)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  The derivative of the expression
+</ResponseField>
+
+<CodeGroup>
+```cpp First derivative
+// Compute d/dx(x^2)
+identificateur x("x");
+gen expr = pow(x, 2);
+gen result = derive(expr, x, context0);
+// Returns: 2*x
+```
+
+```cpp Partial derivative
+// Compute ∂/∂x(x*y)
+gen expr = x * y;
+gen result = derive(expr, x, context0);
+// Returns: y
+```
+
+```cpp Higher-order derivative
+// Compute d³/dx³(x^5)
+gen result = derive(pow(x, 5), x, gen(3), context0);
+// Returns: 60*x^2
+```
+</CodeGroup>
+
+### grad
+
+Compute the gradient of a scalar function (vector of partial derivatives).
+
+```cpp
+gen _grad(const gen & args, GIAC_CONTEXT);
+```
+
+<ParamField path="args" type="gen" required>
+  Arguments: [expression, variables]
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Vector of partial derivatives (gradient)
+</ResponseField>
+
+<CodeGroup>
+```cpp Gradient example
+// Compute gradient of f(x,y) = x^2 + y^2
+gen f = pow(x, 2) + pow(y, 2);
+gen vars = makevecteur(x, y);
+gen result = _grad(makesequence(f, vars), context0);
+// Returns: [2*x, 2*y]
+```
+</CodeGroup>
+
+### function_diff
+
+Differentiate a function definition.
+
+```cpp
+gen _function_diff(const gen & g, GIAC_CONTEXT);
+```
+
+<ParamField path="g" type="gen" required>
+  Function to differentiate
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  Derivative of the function
+</ResponseField>
+
+### implicit_diff
+
+Compute implicit differentiation for equations of the form F(x,y) = 0.
+
+```cpp
+extern const unary_function_ptr * const at_implicit_diff;
+```
+
+Useful for finding dy/dx when y is defined implicitly as a function of x.
+
+<CodeGroup>
+```cpp Implicit differentiation
+// For x^2 + y^2 = 1, find dy/dx
+// Result: -x/y
+```
+</CodeGroup>
+
+## Utility Functions
+
+### depend
+
+Check if an expression depends on a variable.
+
+```cpp
+bool depend(const gen & g, const identificateur & i);
+```
+
+<ParamField path="g" type="gen" required>
+  Expression to check
+</ParamField>
+
+<ParamField path="i" type="identificateur" required>
+  Variable to check dependency on
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if the expression depends on the variable
+</ResponseField>
+
+### domain
+
+Determine the domain of a function.
+
+```cpp
+gen domain(const gen & f, const gen & x, int mode, GIAC_CONTEXT);
+```
+
+<ParamField path="f" type="gen" required>
+  Function expression
+</ParamField>
+
+<ParamField path="x" type="gen" required>
+  Variable
+</ParamField>
+
+<ParamField path="mode" type="int" required>
+  Domain computation mode
+</ParamField>
+
+### critical
+
+Find critical points of a function.
+
+```cpp
+gen critical(const gen & g, bool extrema_only, GIAC_CONTEXT);
+```
+
+<ParamField path="g" type="gen" required>
+  Function to analyze
+</ParamField>
+
+<ParamField path="extrema_only" type="bool" required>
+  If true, return only extrema (not inflection points)
+</ParamField>
+
+<ResponseField name="return" type="gen">
+  List of critical points
+</ResponseField>
+
+## Symbolic Construction
+
+### symb_derive
+
+Create a symbolic derivative expression (unevaluated).
+
+```cpp
+symbolic symb_derive(const gen & a, const gen & b);
+gen symb_derive(const gen & a, const gen & b, const gen & c);
+```
+
+<ParamField path="a" type="gen" required>
+  Expression to differentiate
+</ParamField>
+
+<ParamField path="b" type="gen" required>
+  Variable
+</ParamField>
+
+<ParamField path="c" type="gen">
+  Order of derivative
+</ParamField>
+
+## Notes
+
+- All derivative functions use symbolic computation
+- Higher-order derivatives can be computed by specifying the order
+- The system applies differentiation rules automatically (product rule, chain rule, etc.)
+- For vector-valued functions, use `grad` to compute the gradient
+- Implicit differentiation is useful for equations that cannot be solved explicitly for one variable

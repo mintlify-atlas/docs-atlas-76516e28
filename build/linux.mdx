@@ -1,0 +1,262 @@
+---
+title: Building on Linux
+description: Step-by-step guide to compile Giac on Linux systems
+---
+
+This guide explains how to create a command-line driven Linux version of Giac. The steps have been tested under Linux Mint 17.2, Ubuntu Linux 14.04, 16.04, and 18.04.
+
+## Prerequisites
+
+Before compiling Giac, you need to install the required development packages:
+
+<CodeGroup>
+```bash Ubuntu/Debian
+sudo apt-get install build-essential libgmp-dev libmpfr-dev
+```
+
+```bash Package Details
+# build-essential: C/C++ compiler and build tools
+# libgmp-dev: GNU Multiple Precision arithmetic library (development files)
+# libmpfr-dev: Multiple Precision Floating-Point library (development files)
+```
+</CodeGroup>
+
+<Note>
+The prebuilt source tree includes static versions of GMP and MPFR for various platforms. If you use the default CMake configuration, you don't need to install these libraries separately.
+</Note>
+
+## Building with Gradle
+
+The simplest way to build and run Giac on Linux is using the included Gradle wrapper.
+
+<Steps>
+  <Step title="Navigate to the source directory">
+    ```bash
+    cd /path/to/giac
+    ```
+  </Step>
+
+  <Step title="Run the Gradle build">
+    ```bash
+    ../gradlew run
+    ```
+    
+    This command will:
+    - Compile all necessary source files
+    - Link the executable
+    - Launch the interactive Giac terminal
+  </Step>
+
+  <Step title="Use the interactive terminal">
+    After a successful compilation, you should see:
+    
+    ```
+    Press CTRL-D to stop
+    > Building 85% > :run
+    ```
+    
+    You can now type Giac expressions and commands. Exit with `CTRL-D`.
+  </Step>
+</Steps>
+
+## Building with CMake
+
+For more control over the build process, you can use CMake directly.
+
+<Steps>
+  <Step title="Create a build directory">
+    ```bash
+    mkdir build
+    cd build
+    ```
+  </Step>
+
+  <Step title="Configure the project">
+    ```bash
+    cmake ..
+    ```
+    
+    CMake will automatically detect your platform and configure the build to use prebuilt static libraries for GMP and MPFR from `src/jni/prebuilt/linux/x86-64/`.
+  </Step>
+
+  <Step title="Compile the project">
+    ```bash
+    make
+    ```
+    
+    This builds two targets:
+    - `minigiac`: Command-line executable
+    - `javagiac`: Shared library for JNI integration
+  </Step>
+
+  <Step title="Run the executable">
+    ```bash
+    ./minigiac
+    ```
+  </Step>
+</Steps>
+
+### Using System Libraries
+
+If you prefer to use dynamically linked system libraries instead of the prebuilt static versions:
+
+```bash CMakeLists.txt
+# Change line 262 in CMakeLists.txt from:
+target_link_libraries(minigiac ${MPFR_STATIC} ${GMP_STATIC})
+
+# To:
+target_link_libraries(minigiac mpfr gmp)
+```
+
+## Build Configuration
+
+The CMake build uses the following compiler flags:
+
+```cpp Compiler Flags
+-std=c++0x          # C++11 support
+-fpermissive        # Allow some non-conforming code
+-fno-strict-aliasing # Prevent strict aliasing optimizations
+-DPIC -fpic         # Position independent code
+```
+
+### Preprocessor Definitions
+
+Key definitions used during compilation:
+
+| Definition | Purpose |
+|------------|----------|
+| `HAVE_NO_HOME_DIRECTORY` | Disable home directory detection |
+| `GIAC_GGB` | Enable GeoGebra integration features |
+| `IN_GIAC` | Mark compilation as internal to Giac |
+| `HAVE_LIB_PTHREAD` | Enable pthread support |
+| `GIAC_GENERIC_CONSTANTS` | Use generic constant definitions |
+| `TIMEOUT` | Enable timeout functionality |
+| `HAVE_LIBMPFR` | MPFR library is available |
+| `HAVE_UNISTD_H` | POSIX unistd.h is available |
+| `HAVE_SYS_TIMES_H` | sys/times.h is available |
+| `SIZEOF_VOID_P=8` | Pointer size (64-bit) |
+
+## Troubleshooting
+
+### Android SDK Dependency
+
+If you encounter errors related to the Android SDK during Gradle builds:
+
+<Warning>
+By default, the build configuration includes Android components. If you don't have the Android SDK installed, you'll need to disable these components.
+</Warning>
+
+<Steps>
+  <Step title="Remove Android from settings.gradle">
+    Open `settings.gradle` and remove the line:
+    ```gradle
+    include 'giac-android'
+    ```
+    
+    Alternatively, delete the file completely:
+    ```bash
+    rm settings.gradle
+    rm ../settings.gradle  # For Gradle 5.x
+    ```
+  </Step>
+
+  <Step title="Remove Android tasks from build.gradle">
+    Edit `build.gradle` and remove these tasks:
+    - `androidCopyCrystaxSo`
+    - `androidAar`
+  </Step>
+</Steps>
+
+### Git Symlink Issue
+
+If you cloned the source using git, you may need to create a symlink:
+
+```bash
+ln -s /path/to/gradle-scripts ../gradle-scripts
+```
+
+### Library Not Found Errors
+
+If CMake cannot find the prebuilt libraries:
+
+```bash
+CMake Error: Unable to find library gmp in src/jni/prebuilt/linux/x86-64/
+```
+
+Solution:
+1. Verify the prebuilt directory exists and contains `libgmp.a` and `libmpfr.a`
+2. Try using system libraries instead (see "Using System Libraries" above)
+3. Install libraries manually: `sudo apt-get install libgmp-dev libmpfr-dev`
+
+## Debugging in an IDE
+
+### CLion Setup
+
+Giac supports debugging with CLion (or other CMake-compatible IDEs):
+
+<Steps>
+  <Step title="Open the project">
+    In CLion, select **File → Open** and choose the `CMakeLists.txt` file.
+  </Step>
+
+  <Step title="Configure build settings">
+    CLion will automatically detect the CMake configuration. Ensure the build directory is set to `build/`.
+  </Step>
+
+  <Step title="Set breakpoints">
+    Open `src/minigiac/cpp/minigiac.cc` or any other source file and set breakpoints by clicking in the left margin.
+  </Step>
+
+  <Step title="Start debugging">
+    Click the debug icon or press `Shift+F9` to start a debugging session.
+  </Step>
+</Steps>
+
+## Building Specific Targets
+
+### Command-line Executable Only
+
+```bash
+make minigiac
+```
+
+### JNI Shared Library Only
+
+```bash
+make javagiac
+```
+
+The shared library will be output to `build/libs/javagiac/shared/linux64/libjavagiac.so`.
+
+### Static Linking
+
+The build system automatically links GMP and MPFR statically with the following flags:
+
+```bash Linker Flags
+-static-libgcc       # Link libgcc statically
+-static-libstdc++    # Link libstdc++ statically
+-s                   # Strip symbols (reduce binary size)
+```
+
+## Testing the Build
+
+Run the regression test suite:
+
+```bash
+../gradlew testMinigiacExecutable
+```
+
+This will execute tests from `src/test/` and verify the build is working correctly.
+
+## Performance Optimization
+
+The default build uses `-O2` optimization. For maximum performance:
+
+```bash
+cmake -DCMAKE_CXX_FLAGS="-O3" ..
+make
+```
+
+<Note>
+Higher optimization levels may increase compilation time significantly.
+</Note>

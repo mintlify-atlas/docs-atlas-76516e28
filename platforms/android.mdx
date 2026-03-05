@@ -1,0 +1,518 @@
+---
+title: Android Integration
+description: Integrate Giac computer algebra system into Android applications using JNI
+icon: android
+---
+
+Giac provides Android bindings through JNI (Java Native Interface), allowing you to leverage powerful computer algebra capabilities in your Android applications. This guide covers building, integrating, and using Giac on Android.
+
+## Prerequisites
+
+Before building Giac for Android, ensure you have:
+
+- **Android SDK** with build tools
+- **Crystax NDK 10.2.1** (recommended for better C++ support)
+- **Gradle** 7.0+
+- **Linux build environment** (Ubuntu 14.04+ or similar)
+- **~10 GB free disk space** for NDK and build artifacts
+
+## Setting Up Cross-Compilation
+
+### 1. Download Crystax NDK
+
+Download Crystax NDK 10.2.1 from [https://crystax.net/en/download](https://crystax.net/en/download):
+
+```bash
+cd ~/android-sdks/
+wget https://crystax.net/download/crystax-ndk-10.2.1-linux-x86_64.tar.xz
+tar xf crystax-ndk-10.2.1-linux-x86_64.tar.xz
+```
+
+<Note>
+This will require approximately 8 GB of disk space after extraction.
+</Note>
+
+### 2. Set Environment Variables
+
+```bash
+export NDK_DIR=~/android-sdks/crystax-ndk-10.2.1
+export CC_DIR=~/cross-compilers
+```
+
+### 3. Create Standalone Toolchains
+
+You'll need to create toolchains for each target architecture:
+
+<Tabs>
+  <Tab title="ARM (armeabi-v7a)">
+    ```bash
+    export ARCH=arm
+    export HOST=arm-linux-androideabi
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+  </Tab>
+  
+  <Tab title="ARM64 (arm64-v8a)">
+    ```bash
+    export ARCH=arm64
+    export HOST=aarch64-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+  </Tab>
+  
+  <Tab title="x86">
+    ```bash
+    export ARCH=x86
+    export HOST=i686-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+  </Tab>
+  
+  <Tab title="x86_64">
+    ```bash
+    export ARCH=x86_64
+    export HOST=x86_64-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+  </Tab>
+</Tabs>
+
+### 4. Build GMP and MPFR (Optional)
+
+If you need to build GMP and MPFR from source:
+
+```bash
+# For GMP
+cd gmp-6.3.0
+CFLAGS="-fPIC" ./configure \
+  --host=$HOST \
+  --prefix=$CC_DIR/$ARCH/sysroot/usr \
+  --disable-assembly
+make && make install
+
+# For MPFR
+cd mpfr-4.2.1
+CFLAGS="-fPIC" ./configure \
+  --host=$HOST \
+  --prefix=$CC_DIR/$ARCH/sysroot/usr
+make && make install
+```
+
+<Note>
+Prebuilt GMP and MPFR libraries are included in the repository under `src/jni/prebuilt/android/`.
+</Note>
+
+## Building Giac for Android
+
+### Using Gradle
+
+The project includes Gradle build scripts for Android:
+
+```bash
+# Build Android AAR (Android Archive)
+../gradlew androidAar
+```
+
+This command will:
+1. Compile Giac C++ sources for all Android architectures
+2. Build JNI wrappers
+3. Package everything into an AAR file
+
+### Build Configuration
+
+The `giac-android/build.gradle` defines the build settings:
+
+```gradle
+android {
+    compileSdkVersion 30
+    buildToolsVersion "34.0.0"
+
+    defaultConfig {
+        minSdkVersion 8
+        targetSdkVersion 27
+    }
+}
+```
+
+<Info>
+Giac supports Android API level 8 (Android 2.2) and above, providing broad device compatibility.
+</Info>
+
+## Integration into Android Projects
+
+### Add Dependency
+
+Add the Giac AAR to your Android project:
+
+**build.gradle (app level):**
+```gradle
+dependencies {
+    implementation 'org.geogebra:giac-android:1.2.4'
+}
+```
+
+Or include the AAR file directly:
+
+```gradle
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    implementation(name: 'giac-android', ext: 'aar')
+}
+```
+
+### Load Native Library
+
+In your Android application:
+
+```java
+public class MainActivity extends AppCompatActivity {
+    static {
+        System.loadLibrary("javagiac");
+    }
+    
+    // Your code here
+}
+```
+
+## Using Giac in Android
+
+### Basic Evaluation
+
+```java
+import org.geogebra.giac.Giac;
+
+public class CASCalculator {
+    public String evaluate(String expression) {
+        try {
+            String result = Giac.evaluate(expression);
+            return result;
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+}
+```
+
+### Example Activity
+
+```java
+public class CASActivity extends AppCompatActivity {
+    private EditText inputField;
+    private TextView outputField;
+    
+    static {
+        System.loadLibrary("javagiac");
+    }
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_cas);
+        
+        inputField = findViewById(R.id.input);
+        outputField = findViewById(R.id.output);
+        Button evalButton = findViewById(R.id.evaluate);
+        
+        evalButton.setOnClickListener(v -> evaluateExpression());
+    }
+    
+    private void evaluateExpression() {
+        String expression = inputField.getText().toString();
+        
+        // Run on background thread to avoid blocking UI
+        new Thread(() -> {
+            String result = Giac.evaluate(expression);
+            
+            runOnUiThread(() -> {
+                outputField.setText(result);
+            });
+        }).start();
+    }
+}
+```
+
+### Layout XML
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+    
+    <EditText
+        android:id="@+id/input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter expression"
+        android:inputType="text" />
+    
+    <Button
+        android:id="@+id/evaluate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Evaluate" />
+    
+    <TextView
+        android:id="@+id/output"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textSize="18sp"
+        android:fontFamily="monospace" />
+</LinearLayout>
+```
+
+## Advanced Usage
+
+### Asynchronous Evaluation
+
+Use AsyncTask or Kotlin coroutines for non-blocking evaluation:
+
+```java
+public class CASEvaluator extends AsyncTask<String, Void, String> {
+    private TextView outputView;
+    
+    public CASEvaluator(TextView outputView) {
+        this.outputView = outputView;
+    }
+    
+    @Override
+    protected String doInBackground(String... params) {
+        String expression = params[0];
+        return Giac.evaluate(expression);
+    }
+    
+    @Override
+    protected void onPostExecute(String result) {
+        outputView.setText(result);
+    }
+}
+
+// Usage
+new CASEvaluator(outputField).execute("factor(x^4-1)");
+```
+
+### Kotlin Coroutines
+
+```kotlin
+class CASActivity : AppCompatActivity() {
+    companion object {
+        init {
+            System.loadLibrary("javagiac")
+        }
+    }
+    
+    private suspend fun evaluateExpression(expr: String): String {
+        return withContext(Dispatchers.IO) {
+            Giac.evaluate(expr)
+        }
+    }
+    
+    fun onEvaluateClick() {
+        val expression = inputField.text.toString()
+        
+        lifecycleScope.launch {
+            try {
+                val result = evaluateExpression(expression)
+                outputField.text = result
+            } catch (e: Exception) {
+                outputField.text = "Error: ${e.message}"
+            }
+        }
+    }
+}
+```
+
+## Architecture-Specific Libraries
+
+The AAR includes native libraries for all architectures:
+
+```
+giac-android.aar
+├── jniLibs/
+│   ├── armeabi-v7a/
+│   │   ├── libjavagiac.so
+│   │   └── libc++_shared.so
+│   ├── arm64-v8a/
+│   │   ├── libjavagiac.so
+│   │   └── libc++_shared.so
+│   ├── x86/
+│   │   ├── libjavagiac.so
+│   │   └── libc++_shared.so
+│   └── x86_64/
+│       ├── libjavagiac.so
+│       └── libc++_shared.so
+```
+
+<Info>
+Android automatically selects the correct native library based on the device architecture.
+</Info>
+
+## Performance Considerations
+
+- **Thread usage**: Always evaluate expressions on background threads
+- **Memory**: Complex computations may use significant memory
+- **Battery**: Intensive calculations can drain battery quickly
+- **Timeouts**: Implement timeouts for long-running computations
+
+### Example with Timeout
+
+```java
+private Future<String> evaluateWithTimeout(String expression, long timeoutMs) {
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    
+    Future<String> future = executor.submit(() -> {
+        return Giac.evaluate(expression);
+    });
+    
+    try {
+        return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+        future.cancel(true);
+        throw new RuntimeException("Evaluation timed out");
+    } finally {
+        executor.shutdown();
+    }
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="UnsatisfiedLinkError: dlopen failed">
+    This usually means the native library couldn't be found or loaded.
+    
+    **Solutions:**
+    - Ensure `System.loadLibrary("javagiac")` is called before using Giac
+    - Verify the AAR includes all architecture libraries
+    - Check that `libc++_shared.so` is present alongside `libjavagiac.so`
+  </Accordion>
+
+  <Accordion title="Build fails with 'NDK not found'">
+    Create a `local.properties` file in your project root:
+    
+    ```properties
+    sdk.dir=/path/to/android/sdk
+    ndk.dir=/path/to/android/ndk
+    ```
+  </Accordion>
+
+  <Accordion title="App crashes on certain devices">
+    Ensure you've built libraries for all architectures. Check the device architecture:
+    
+    ```java
+    String abi = Build.SUPPORTED_ABIS[0];
+    Log.d("ABI", "Device ABI: " + abi);
+    ```
+  </Accordion>
+
+  <Accordion title="Gradle sync fails">
+    You may need to remove Android-related tasks if not building for Android:
+    
+    1. Remove `include giac-android` from `settings.gradle`
+    2. Remove Android tasks from `build.gradle`
+  </Accordion>
+</AccordionGroup>
+
+## ProGuard Configuration
+
+If using ProGuard/R8, add these rules to prevent obfuscation:
+
+```proguard
+# Keep Giac native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+-keep class org.geogebra.giac.** { *; }
+```
+
+## Publishing to Maven
+
+The build script includes Maven publishing:
+
+```gradle
+publishing {
+    publications {
+        release(MavenPublication) {
+            artifactId = 'giac-android'
+            groupId = 'org.geogebra'
+            version = project.getParent().ggrev
+            from components.release
+            pom {
+                name = 'Giac for Android'
+                description = 'Android Giac library'
+            }
+        }
+    }
+}
+```
+
+## Example Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Math Education Apps" icon="graduation-cap">
+    Build interactive math learning applications with step-by-step solutions
+  </Card>
+  <Card title="Scientific Calculators" icon="calculator">
+    Create advanced calculators with symbolic computation
+  </Card>
+  <Card title="Engineering Tools" icon="wrench">
+    Develop specialized engineering calculation tools
+  </Card>
+  <Card title="Graphing Applications" icon="chart-line">
+    Generate and analyze mathematical plots and graphs
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="C++ API" icon="code" href="/platforms/cpp">
+    Learn about the underlying C++ implementation
+  </Card>
+  <Card title="Function Reference" icon="book" href="/api/overview">
+    Explore available mathematical functions
+  </Card>
+  <Card title="WebAssembly" icon="globe" href="/platforms/webassembly">
+    Use Giac in web applications
+  </Card>
+  <Card title="Calculus API" icon="lightbulb" href="/api/calculus/integration">
+    See integration and calculus functions
+  </Card>
+</CardGroup>

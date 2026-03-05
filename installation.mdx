@@ -1,0 +1,442 @@
+---
+title: Installation
+description: Install Giac on your system using npm, compile from C++ source, or build for Android and WebAssembly
+---
+
+Giac is a free computer algebra system that can be installed and used in multiple ways across different platforms.
+
+<Tabs>
+  <Tab title="npm/Node.js">
+    ## Prerequisites
+
+    Since Giac is a C++ library, you need to have a compiler toolchain installed:
+
+    - **Node.js** and **npm**
+    - A C++ compiler (gcc, clang, or Visual Studio)
+    - [GMP](https://gmplib.org) library (GNU Multiple Precision Arithmetic)
+    - [MPFR](http://www.mpfr.org/) library (Multiple Precision Floating-Point Reliable)
+    - [node-gyp](https://github.com/nodejs/node-gyp) for native compilation
+
+    ### Linux
+
+    Install the required packages:
+
+    ```bash
+    sudo apt install build-essential libgmp-dev libmpfr-dev
+    ```
+
+    <Note>
+      Ubuntu 16.04 and above are supported. Tested on amd64, i386, and armhf processors.
+    </Note>
+
+    ### macOS
+
+    Install dependencies using [MacPorts](https://www.macports.org/install.php):
+
+    ```bash
+    sudo port install gmp mpfr
+    ```
+
+    The build assumes GMP and MPFR are installed in `/opt/local/lib`. If using a different location, set the `LIBDIR` environment variable.
+
+    ### Windows
+
+    <Warning>
+      Currently only the 32-bit version works correctly. The 64-bit version may fail for some computations.
+    </Warning>
+
+    1. Follow [Microsoft's NodeJS Guidelines](https://github.com/Microsoft/nodejs-guidelines/blob/master/windows-environment.md#compiling-native-addon-modules) to set up node-gyp
+    2. Install Visual Studio 2013 (newer versions may cause compilation errors)
+    3. Download [MPIR](http://mpir.org/) (instead of GMP) and MPFR static libraries (.LIB files)
+    4. Place .LIB files in the current folder or set the `LIBDIR` environment variable
+    5. Place .DLL files (MPIR.DLL and MPFR.DLL) in the same folder for runtime
+
+    ## Installation
+
+    Install the latest stable version:
+
+    ```bash
+    npm install giac
+    ```
+
+    Or install the latest development version:
+
+    ```bash
+    npm install giac@latest
+    ```
+
+    ### Faster compilation
+
+    The compilation may take several minutes. Speed it up by using multiple cores:
+
+    ```bash
+    JOBS=4 npm install giac@latest
+    ```
+
+    <Note>
+      Set `JOBS` to the number of CPU cores on your system for optimal compilation speed.
+    </Note>
+
+    ## Testing
+
+    After installation, test that Giac is working:
+
+    ```bash
+    cd node_modules/giac
+    npm test
+    ```
+
+    On Windows, ensure the .DLL files are in the giac folder or build subfolder before testing.
+  </Tab>
+
+  <Tab title="C++ (CMake)">
+    ## Prerequisites
+
+    ### Linux and macOS
+
+    Install the required packages:
+
+    **Linux (Debian/Ubuntu):**
+    ```bash
+    sudo apt install cmake make build-essential libgmp-dev libmpfr-dev
+    ```
+
+    **macOS (using Homebrew):**
+    ```bash
+    brew install cmake make gmp mpfr
+    ```
+
+    <Note>
+      The build includes prebuilt static versions of GMP and MPFR for most platforms, so you don't strictly need these libraries installed. However, installing them is recommended for development.
+    </Note>
+
+    ### Windows
+
+    Use [MSYS2](https://www.msys2.org/) with the CLANG64 flavor. Install these packages:
+
+    ```bash
+    pacman -S base-devel \
+      mingw-w64-clang-x86_64-cc \
+      mingw-w64-clang-x86_64-gmp \
+      mingw-w64-clang-x86_64-mpfr \
+      mingw-w64-clang-x86_64-cmake \
+      mingw-w64-clang-x86_64-make
+    ```
+
+    <Note>
+      For 32-bit builds, use the CLANG32 flavor and replace "x86_64" with "i686" in package names.
+    </Note>
+
+    ## Building
+
+    ### Linux and macOS
+
+    ```bash
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ```
+
+    This creates two targets:
+    - `minigiac` - Command-line executable
+    - `javagiac` - Shared library for JNI bindings
+
+    ### Windows
+
+    ```bash
+    mkdir build
+    cd build
+    CC=clang CXX=clang++ cmake -G "MinGW Makefiles" ..
+    mingw32-make
+    ```
+
+    ## Building with Gradle
+
+    Alternatively, use Gradle for a more integrated build:
+
+    ### Linux command-line version
+
+    ```bash
+    ../gradlew run
+    ```
+
+    After successful compilation, you'll see:
+    ```
+    Press CTRL-D to stop
+    > Building 85% > :run
+    ```
+
+    <Note>
+      If you encounter Android SDK errors, remove the line `include giac-android` from `settings.gradle` and remove the tasks `androidCopyCrystaxSo` and `androidAar` from `build.gradle`.
+    </Note>
+
+    ## Development in CLion
+
+    For debugging and development:
+
+    1. Open CLion and import the `CMakeLists.txt` file
+    2. Set breakpoints in source files (start with `minigiac.cc`)
+    3. Run in debug mode
+
+    The build system uses static linking for GMP and MPFR by default, which improves portability. If you prefer dynamic linking, modify the `CMakeLists.txt` file to use `gmp` and `mpfr` instead of `${GMP_STATIC}` and `${MPFR_STATIC}`.
+  </Tab>
+
+  <Tab title="Android">
+    ## Prerequisites
+
+    <Warning>
+      This process requires approximately 10 GB of disk space.
+    </Warning>
+
+    1. Download [Crystax NDK 10.2.1](https://crystax.net/en/download)
+    2. Unpack to `~/android-sdks/` (requires ~8 GB additional space)
+    3. Set up Android SDK (required for building)
+
+    ## Setting up cross-compilers
+
+    ### Environment variables
+
+    ```bash
+    export NDK_DIR=~/android-sdks/crystax-ndk-10.2.1
+    export CC_DIR=~/cross-compilers
+    ```
+
+    ### ARM (armeabi-v7a)
+
+    ```bash
+    export ARCH=arm
+    export HOST=arm-linux-androideabi
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ```
+
+    ### x86
+
+    ```bash
+    export ARCH=x86
+    export HOST=i686-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    ```
+
+    ### x86_64
+
+    ```bash
+    export ARCH=x86_64
+    export HOST=x86_64-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    ```
+
+    ### ARM64
+
+    ```bash
+    export ARCH=arm64
+    export HOST=aarch64-linux-android
+    
+    $NDK_DIR/build/tools/make-standalone-toolchain.sh \
+      --ndk-dir=$NDK_DIR \
+      --arch=$ARCH \
+      --platform=android-21 \
+      --install-dir=$CC_DIR/$ARCH
+    ```
+
+    ## Optional: Compile GMP and MPFR
+
+    To compile GMP and MPFR from source for Android (requires 300-500 MB additional space):
+
+    ```bash
+    CFLAGS="-fPIC" ./configure \
+      --host=$HOST \
+      --prefix=$CC_DIR/$ARCH/sysroot/usr \
+      --disable-assembly && make && make install
+    ```
+
+    Repeat for each architecture. Libraries will be in `$CC_DIR/$ARCH/sysroot/usr/lib`.
+
+    ## Building the Android library
+
+    Ensure the `PATH` variable includes your cross-compiler:
+
+    ```bash
+    export PATH=$CC_DIR/$ARCH/bin/:$PATH
+    ../gradlew androidAar
+    ```
+
+    This creates an Android AAR package with native libraries for all architectures.
+
+    ### Troubleshooting
+
+    Create `local.properties` if needed:
+
+    ```properties
+    sdk.dir=/path/to/android/sdk
+    ```
+
+    Or set the `ANDROID_SDK` environment variable.
+  </Tab>
+
+  <Tab title="WebAssembly">
+    ## Prerequisites
+
+    - Git
+    - Python
+    - CMake (for compiling GMP and MPFR if needed)
+    - Approximately 2-3 GB of disk space
+
+    ## Quick Start
+
+    Build the WebAssembly version using Emscripten:
+
+    ```bash
+    ./gradlew downloadEmsdk installEmsdk activateEmsdk createGiacWasmJs
+    ```
+
+    This command will:
+    1. Download the Emscripten SDK
+    2. Install Emscripten (may take a while as clang is compiled from source)
+    3. Activate the toolchain
+    4. Compile Giac to WebAssembly
+
+    <Note>
+      The default Emscripten version is 4.0.7. Other versions may not work correctly or may have issues with some Giac commands.
+    </Note>
+
+    ## Step-by-Step Installation
+
+    ### 1. Download Emscripten SDK
+
+    ```bash
+    ./gradlew downloadEmsdk
+    ```
+
+    ### 2. Install Emscripten
+
+    For the default version (4.0.7):
+
+    ```bash
+    ./gradlew installEmsdk
+    ```
+
+    For a specific version:
+
+    ```bash
+    EMSCRIPTEN_VERSION=tag-X.Y.Z ./gradlew installEmsdk
+    ```
+
+    <Warning>
+      Always use the correct Emscripten version and clang compiler. Mismatches can cause strange compilation or runtime problems. Newer versions perform sanity checks and will inform you of any issues.
+    </Warning>
+
+    ### 3. Activate Emscripten
+
+    ```bash
+    ./gradlew activateEmsdk
+    ```
+
+    ### 4. Compile to WebAssembly
+
+    ```bash
+    ./gradlew createGiacWasmJs
+    ```
+
+    Or with a specific Emscripten version:
+
+    ```bash
+    EMSCRIPTEN_VERSION=tag-X.Y.Z ./gradlew clean activateEmsdk createGiacWasmJs
+    ```
+
+    ## Advanced: Compiling GMP and MPFR
+
+    The repository includes prebuilt GMP and MPFR libraries in `src/giac.js/prebuilt/` that are compatible with the default Emscripten version.
+
+    If you need to recompile them for a different Emscripten version:
+
+    ### Configure and build GMP
+
+    ```bash
+    ./gradlew emConfigureGmp emMakeGmp
+    ```
+
+    ### Configure and build MPFR
+
+    ```bash
+    ./gradlew emConfigureMpfr emMakeMpfr
+    ```
+
+    <Note>
+      You may need to set source directory paths in `build.gradle` before running these commands:
+      - `gmpSourceDir` (default: `/data/jenkins/ws/gmp-6.3.0`)
+      - `mpfrSourceDir` (default: `/data/jenkins/ws/mpfr-4.2.1`)
+    </Note>
+
+    ## Output Files
+
+    After successful compilation, find the WebAssembly files in:
+
+    ```
+    build/binaries/giacggb.wasm/
+    ├── giacggb.js          # JavaScript wrapper
+    ├── giacggb.wasm        # WebAssembly binary
+    └── giac.wasm.js        # Combined JS with embedded base64 WASM
+    ```
+
+    The `giac.wasm.js` file contains the entire library with the WASM binary encoded in base64, making it easy to embed in web applications.
+  </Tab>
+</Tabs>
+
+## Verifying Installation
+
+After installation, verify that Giac is working correctly by running a simple test:
+
+<CodeGroup>
+```javascript Node.js
+var giac = require('bindings')('giac');
+console.log(giac.evaluate("expand((x+y)^3)"));
+// Output: x^3+y^3+3*x*y^2+3*x^2*y
+```
+
+```bash C++ (minigiac)
+./build/minigiac
+# Enter: factor(x^4-1)
+# Output: (x-1)*(x+1)*(x^2+1)
+```
+
+```bash Gradle
+./gradlew run
+# Enter: simplify(sin(3x)/sin(x))
+```
+</CodeGroup>
+
+## Getting Help
+
+If you encounter any issues or have questions:
+
+- Visit the [Giac/XCAS Forum](https://xcas.univ-grenoble-alpes.fr/forum/)
+- Check the official [Giac website](https://www-fourier.ujf-grenoble.fr/~parisse/giac.html)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn the basics with a hands-on tutorial
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore available functions and methods
+  </Card>
+</CardGroup>

@@ -1,0 +1,381 @@
+---
+title: "Context API"
+description: "Documentation for Giac's context system for managing evaluation state and configuration"
+---
+
+## Overview
+
+The `context` class manages evaluation state, symbol tables, and global settings in Giac. Each context provides an independent evaluation environment.
+
+Defined in: `src/giac/headers/global.h`
+
+## Context Structure
+
+```cpp
+class context {
+public:
+  sym_tab * tabptr;              // Symbol table
+  context * globalcontextptr;    // Global context pointer
+  context * previous;            // Parent context
+  global * globalptr;            // Global settings
+  const context * parent;        // Parent for lookups
+  vecteur * quoted_global_vars;  // Quoted variables
+  vecteur * rootofs;             // Rootof expressions
+  vecteur * history_in_ptr;      // Input history
+  vecteur * history_out_ptr;     // Output history
+  vecteur * history_plot_ptr;    // Plot history
+  
+  context();
+  context(const context & c);
+  ~context();
+  context * clone() const;
+};
+```
+
+## Context Hierarchy
+
+- **Global Context**: Top-level context with `globalcontextptr == 0` and `previous == 0`
+- **Local Context**: Has `globalcontextptr` pointing to global context and `previous` pointing to parent
+
+## Creating Contexts
+
+### Default Constructor
+
+```cpp
+context();
+```
+
+Creates a new global context.
+
+<CodeGroup>
+```cpp Example
+context ctx;  // New global context
+```
+</CodeGroup>
+
+### Copy Constructor
+
+```cpp
+context(const context & c);
+```
+
+Creates a copy of an existing context.
+
+### Named Context (not on all platforms)
+
+```cpp
+context(const std::string & name);
+```
+
+Creates or retrieves a named global context.
+
+### Cloning
+
+```cpp
+context * clone() const;
+```
+
+Creates a deep copy of the context.
+
+<CodeGroup>
+```cpp Example
+context * ctx1 = new context();
+context * ctx2 = ctx1->clone();
+```
+</CodeGroup>
+
+## Context Management Functions
+
+```cpp
+context * clone_context(const context *);
+void init_context(context * ptr);
+void clear_context(context * ptr);
+```
+
+<ParamField path="clone_context" type="function">
+  Creates a clone of the given context
+</ParamField>
+<ParamField path="init_context" type="function">
+  Initializes a context with default settings
+</ParamField>
+<ParamField path="clear_context" type="function">
+  Clears all data from a context
+</ParamField>
+
+## Symbol Table Operations
+
+The symbol table (`sym_tab`) is a map from C strings to gen objects:
+
+```cpp
+typedef std::map<const char *, gen, ltstr> sym_tab;
+```
+
+### Accessing Symbols
+
+Symbols are typically accessed through the evaluation system, but you can directly manipulate the symbol table:
+
+<CodeGroup>
+```cpp Example
+context ctx;
+sym_tab & table = *ctx.tabptr;
+table["x"] = gen(5);
+gen value = table["x"];  // 5
+```
+</CodeGroup>
+
+## Global Settings
+
+The `global` class contains all configuration settings:
+
+```cpp
+class global {
+public:
+  int _xcas_mode_;           // Xcas compatibility mode
+  int _calc_mode_;           // Calculator mode
+  int _decimal_digits_;      // Display precision
+  int _scientific_format_;   // Scientific notation
+  int _integer_format_;      // Integer display format (decimal, hex, etc.)
+  int _latex_format_;        // LaTeX output mode
+  bool _expand_re_im_;       // Expand complex to re + im
+  bool _complex_mode_;       // Allow complex results
+  bool _integer_mode_;       // Exact integer arithmetic
+  bool _approx_mode_;        // Approximate mode
+  int _angle_mode_;          // 0=radians, 1=degrees
+  double _epsilon_;          // Tolerance for comparisons
+  // ... many more settings
+};
+```
+
+## Configuration Functions
+
+### Calculation Mode
+
+```cpp
+int & calc_mode(GIAC_CONTEXT);
+void calc_mode(int b, GIAC_CONTEXT);
+```
+
+Get/set calculator mode (affects display and behavior).
+
+<CodeGroup>
+```cpp Example
+context ctx;
+calc_mode(1, &ctx);  // Set calc mode
+int mode = calc_mode(&ctx);  // Get current mode
+```
+</CodeGroup>
+
+### Precision Settings
+
+```cpp
+int & decimal_digits(GIAC_CONTEXT);
+void decimal_digits(int b, GIAC_CONTEXT);
+```
+
+Control display precision for floating-point numbers.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+decimal_digits(12, &ctx);  // Show 12 decimal digits
+```
+</CodeGroup>
+
+### Number Format
+
+```cpp
+int & scientific_format(GIAC_CONTEXT);
+void scientific_format(int b, GIAC_CONTEXT);
+
+int & integer_format(GIAC_CONTEXT);
+void integer_format(int b, GIAC_CONTEXT);
+```
+
+Control how numbers are displayed.
+
+### Complex Mode
+
+```cpp
+bool & complex_mode(GIAC_CONTEXT);
+void complex_mode(bool b, GIAC_CONTEXT);
+```
+
+Enable/disable complex number results.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+complex_mode(true, &ctx);  // Allow complex results
+
+gen x = gen("sqrt(-1)", &ctx);
+gen result = x.eval(1, &ctx);  // Returns i
+```
+</CodeGroup>
+
+### Angle Mode
+
+```cpp
+int & angle_mode(GIAC_CONTEXT);
+void angle_mode(int m, GIAC_CONTEXT);
+bool angle_radian(GIAC_CONTEXT);
+void angle_radian(bool b, GIAC_CONTEXT);
+```
+
+Control angle units for trigonometric functions.
+
+- 0 = radians
+- 1 = degrees
+
+<CodeGroup>
+```cpp Example
+context ctx;
+angle_mode(1, &ctx);  // Use degrees
+```
+</CodeGroup>
+
+### Epsilon (Tolerance)
+
+```cpp
+double & epsilon(GIAC_CONTEXT);
+void epsilon(double c, GIAC_CONTEXT);
+```
+
+Set tolerance for approximate comparisons.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+epsilon(1e-10, &ctx);  // Set tolerance to 10^-10
+```
+</CodeGroup>
+
+## Evaluation Control
+
+### Evaluation Level
+
+```cpp
+int & eval_level(GIAC_CONTEXT);
+```
+
+Get the current evaluation level (controls recursion depth).
+
+### Approximate Mode
+
+```cpp
+bool & approx_mode(GIAC_CONTEXT);
+void approx_mode(bool b, GIAC_CONTEXT);
+```
+
+Toggle between exact and approximate arithmetic.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+approx_mode(true, &ctx);
+gen x = gen("1/3", &ctx);
+gen result = x.eval(1, &ctx);  // 0.333333...
+```
+</CodeGroup>
+
+## History Management
+
+```cpp
+vecteur & history_in(GIAC_CONTEXT);
+vecteur & history_out(GIAC_CONTEXT);
+vecteur & history_plot(GIAC_CONTEXT);
+```
+
+Access input/output/plot history vectors.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+vecteur & in_hist = history_in(&ctx);
+in_hist.push_back(gen("x^2", &ctx));
+```
+</CodeGroup>
+
+## Context Pointer Macros
+
+Giac uses these macros for context parameters:
+
+```cpp
+#define GIAC_CONTEXT const context * contextptr
+#define GIAC_CONTEXT0 const context * contextptr = 0
+```
+
+- `GIAC_CONTEXT` - Required context parameter
+- `GIAC_CONTEXT0` - Optional context (defaults to 0)
+
+<CodeGroup>
+```cpp Example
+// Function with required context
+void my_function(const gen & x, GIAC_CONTEXT) {
+  gen result = x.eval(1, contextptr);
+}
+
+// Function with optional context
+gen my_eval(const gen & x, GIAC_CONTEXT0) {
+  return x.eval(1, contextptr);
+}
+```
+</CodeGroup>
+
+## Thread Safety
+
+Each context maintains its own state and can be used in separate threads:
+
+```cpp
+#ifdef HAVE_LIBPTHREAD
+pthread_mutex_t * mutexptr(GIAC_CONTEXT);
+#endif
+
+bool is_context_busy(GIAC_CONTEXT);
+```
+
+## Default Context
+
+```cpp
+extern const context * context0;
+```
+
+The default global context, typically null (uses default settings).
+
+## Cleanup
+
+```cpp
+void cleanup_context(GIAC_CONTEXT);
+```
+
+Clean up evaluation state in a context.
+
+## Random Number Generation
+
+```cpp
+int giac_rand(GIAC_CONTEXT);
+void rand_seed(unsigned int b, GIAC_CONTEXT);
+```
+
+Context-local random number generation.
+
+<CodeGroup>
+```cpp Example
+context ctx;
+rand_seed(12345, &ctx);
+int r = giac_rand(&ctx);
+```
+</CodeGroup>
+
+## Configuration Files
+
+```cpp
+void read_config(const std::string & name, GIAC_CONTEXT, bool verbose = true);
+std::string read_env(GIAC_CONTEXT, bool verbose = true);
+```
+
+Load configuration from files.
+
+## See Also
+
+- [gen class](/api/gen) - The gen type system
+- [Evaluation functions](/api/evaluation) - Using contexts for evaluation
