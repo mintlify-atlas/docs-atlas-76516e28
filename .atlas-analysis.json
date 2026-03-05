@@ -1,0 +1,127 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Giac",
+  "projectDescription": "A free computer algebra system for symbolic computation, calculus, and mathematical operations",
+  "theme": "sequoia",
+  "primaryColor": "#e2e4e6",
+  "lightColor": "#113251",
+  "darkColor": "#7c94a4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/data-types",
+              "concepts/contexts"
+            ]
+          },
+          {
+            "group": "Platform Guides",
+            "pages": [
+              "platforms/cpp",
+              "platforms/nodejs",
+              "platforms/android",
+              "platforms/webassembly"
+            ]
+          },
+          {
+            "group": "Building & Compilation",
+            "pages": [
+              "build/linux",
+              "build/macos",
+              "build/windows",
+              "build/cross-compilation"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/overview",
+              "api/gen",
+              "api/context",
+              "api/evaluation"
+            ]
+          },
+          {
+            "group": "Algebra",
+            "pages": [
+              "api/algebra/polynomials",
+              "api/algebra/factorization",
+              "api/algebra/algebraic-extensions"
+            ]
+          },
+          {
+            "group": "Calculus",
+            "pages": [
+              "api/calculus/derivatives",
+              "api/calculus/integration",
+              "api/calculus/differential-equations",
+              "api/calculus/series"
+            ]
+          },
+          {
+            "group": "Linear Algebra",
+            "pages": [
+              "api/linear/vectors",
+              "api/linear/matrices",
+              "api/linear/gaussian-elimination"
+            ]
+          },
+          {
+            "group": "Solvers",
+            "pages": [
+              "api/solvers/equation-solving",
+              "api/solvers/sturm-sequences"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utilities/plotting",
+              "api/utilities/formatting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Symbolic computation and computer algebra",
+    "Polynomial manipulation and factorization",
+    "Calculus operations (derivatives, integrals, differential equations)",
+    "Linear algebra with vectors and matrices",
+    "Equation solving with multiple algorithms",
+    "Multi-platform support (C++, NodeJS, Android, WebAssembly)"
+  ],
+  "publicApiSurface": [
+    "giac::gen",
+    "giac::context",
+    "giac::eval",
+    "giac::derive",
+    "giac::integrate",
+    "giac::factor",
+    "giac::solve",
+    "giac::simplify",
+    "giac::gaussjord",
+    "giac::symbolic",
+    "giac::polynome",
+    "giac::fraction"
+  ]
+}
