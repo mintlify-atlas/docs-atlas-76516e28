@@ -72,7 +72,7 @@ For 32-bit builds, use the CLANG32 flavor and replace `x86_64` with `i686` in pa
 Here's a simple example showing how to evaluate expressions using Giac:
 
 ```cpp
-#include <giac.h>
+#include "giac.h"
 #include <iostream>
 #include <string>
 
@@ -125,7 +125,7 @@ extern "C" {
 ```cpp
 #include "GeoGebraCAS.h"
 #include <stdexcept>
-#include <giac.h>
+#include "giac.h"
 
 using namespace std;
 using namespace giac;
@@ -284,7 +284,7 @@ Giac uses several preprocessor definitions for platform-specific behavior:
 Giac uses C++ exceptions for error reporting:
 
 ```cpp
-#include <giac.h>
+#include "giac.h"
 #include <stdexcept>
 
 using namespace giac;
